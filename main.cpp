@@ -31,7 +31,7 @@ main (int argc, char **argv)
 
     while (!tokens.end()) {
         Token t = tokens.next();
-        printf("%d:%d %c\n", t.line, t.column, t.value);
+        printf("%d:%d %s\n", t.line, t.column, t.str.c_str());
     }
 
     putchar('\n');

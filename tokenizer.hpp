@@ -6,26 +6,40 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <map>
 
 enum TokenType {
+    TKN_WHITE,
+
     TKN_ADD,
     TKN_SUB,
     TKN_DIV,
     TKN_MUL,
-    TKN_DIGIT
+
+    TKN_PERIOD,
+    TKN_LEFT_PAREN,
+    TKN_RIGHT_PAREN,
+    TKN_LEFT_BRACKET,
+    TKN_RIGHT_BRACKET,
+
+    TKN_NUMBER,
+    TKN_NAME
 };
 
 class Token {
 public:
-    Token (int l, int c, enum TokenType t, int v)
+    Token ()
+    { }
+
+    Token (int l, int c, enum TokenType t, std::string s)
     /* add +1 to line and column counts for human numbers */
-        : line(l + 1), column(c + 1), type(t), value(v)
+        : line(l + 1), column(c + 1), type(t), str(s)
     { }
 
     int line;
     int column;
     enum TokenType type;
-    int value;
+    std::string str;
 };
 
 class TokenizedInput {
@@ -87,6 +101,37 @@ protected:
     std::string error;
 };
 
+static const std::string SymDigits = "0123456789";
+static const std::string SymAlpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static const std::string SymWhitespace = " \t\r";
+static const std::map<char, enum TokenType> SymTypes = {
+    { '+', TKN_ADD },
+    { '-', TKN_SUB },
+    { '/', TKN_DIV },
+    { '*', TKN_MUL },
+    { '.', TKN_PERIOD },
+    { '(', TKN_LEFT_PAREN },
+    { ')', TKN_RIGHT_PAREN },
+    { '[', TKN_LEFT_BRACKET },
+    { ']', TKN_RIGHT_BRACKET }
+};
+
+/* Join all individual characters of a particular type into a single token */
+Token coalesce (char c, std::istream &input, int &line, int &col,
+                enum TokenType type, const std::string &type_string);
+
+bool
+character_in (char c, const std::map<char, enum TokenType> &container)
+{
+    return (container.find(c) != container.end());
+}
+
+bool
+character_in (char c, const std::string &container)
+{
+    return (container.find(c) != std::string::npos);
+}
+
 TokenizedInput
 tokenize (std::istream &input)
 {
@@ -96,48 +141,61 @@ tokenize (std::istream &input)
 
     int line = 0;
     int col = 0;
+    Token t;
     char c;
-    int newline = false;
 
     /* setup first line */
     lines.push_back(std::string());
 
     while (input.get(c)) {
-        switch (c) {
-            case '+': tokens.push_back(Token(line, col, TKN_ADD, c)); break;
-            case '-': tokens.push_back(Token(line, col, TKN_SUB, c)); break;
-            case '/': tokens.push_back(Token(line, col, TKN_DIV, c)); break;
-            case '*': tokens.push_back(Token(line, col, TKN_MUL, c)); break;
 
-            case '0': case '1': case '2': case '3': case '4': 
-            case '5': case '6': case '7': case '8': case '9':
-                tokens.push_back(Token(line, col, TKN_DIGIT, c));
-                break;
-
-            /* reset the line */
-            case '\n':
-                newline = true;
-                break;
-
-            /* handle whitespace */
-            case ' ': case '\t': case '\r':
-                break;
-
-            default:
-                error << "Bad token at line " << line << " column " << col << ": `" << c << "'";
-                return TokenizedInput(error.str());
-        }
-
-        if (newline) {
+        /* handle subsequent newlines and skip the character */
+        if (c == '\n') {
             col = 0;
             line++;
             lines.push_back(std::string());
-            newline = false;
-        } else {
-            lines[line] += c;
-            col++;
+            continue;
         }
+
+        if (character_in(c, SymTypes)) {
+            t = Token(line, col, SymTypes.at(c), std::string(1, c));
+        }
+        else if (character_in(c, SymDigits)) {
+            t = coalesce(c, input, line, col, TKN_NUMBER, SymDigits);
+        }
+        else if (character_in(c, SymWhitespace)) {
+            t = coalesce(c, input, line, col, TKN_WHITE, SymWhitespace);
+        }
+        else {
+            error << "Bad token at line " << line << " column " << col << ": `" << c << "'";
+            return TokenizedInput(error.str());
+        }
+
+        if (t.type != TKN_WHITE)
+            tokens.push_back(t);
+
+        lines[line] += t.str;
+        col++;
     }
 
     return TokenizedInput(lines, tokens);
+}
+
+Token
+coalesce (char c, std::istream &input, int &line, int &col,
+          enum TokenType type, const std::string &type_string)
+{
+    std::string str = "";
+    str += c;
+    while (input.get(c)) {
+        if (character_in(c, type_string)) {
+            str += c;
+            col++;
+        }
+        else {
+            input.putback(c);
+            break;
+        }
+    }
+    return Token(line, col, type, str);
 }
