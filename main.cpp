@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <string.h>
 #include "tokenizer.hpp"
+#include "parser.hpp"
 
 void
 usage (char *prog)
@@ -12,20 +13,18 @@ usage (char *prog)
     exit(1);
 }
 
-int
-main (int argc, char **argv)
+TokenizedInput
+tokenize_input (char *filename)
 {
-    if (argc < 2)
-        usage(argv[0]);
-
+    std::string f(filename);
     TokenizedInput tokens;
 
-    if (argv[1][0] == '-') {
+    if (f == "-") {
         tokens = tokenize(std::cin);
     } else {
-        std::ifstream input(argv[1], std::ios::in);
+        std::ifstream input(f, std::ios::in);
         if (input.fail()) {
-            fprintf(stderr, "%s: `%s'\n", strerror(errno), argv[1]);
+            fprintf(stderr, "%s: `%s'\n", strerror(errno), filename);
             exit(1);
         }
         tokens = tokenize(input);
@@ -36,16 +35,17 @@ main (int argc, char **argv)
         exit(1);
     }
 
-    while (!tokens.empty()) {
-        Token t = tokens.next();
-        printf("%d:%d %s\n", t.line, t.column, t.str.c_str());
-    }
+    return tokens;
+}
 
-    putchar('\n');
+int
+main (int argc, char **argv)
+{
+    if (argc < 2)
+        usage(argv[0]);
 
-    for (auto line : tokens.all_lines()) {
-        printf("%s\n", line.c_str());
-    }
+    TokenizedInput tokens = tokenize_input(argv[1]);
+    parse(tokens);
 
     return 0;
 }
