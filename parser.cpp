@@ -33,7 +33,7 @@ term (TokenizedInput &T)
     int num = atom(T);
 
     /* <termTail> = * <atom> <termTail> | / <atom> <termTail> */
-    while (T.peek().type == TKN_MUL || T.peek().type == TKN_DIV) {
+    while (!T.empty()) {
         switch (T.peek().type) {
             case TKN_MUL:
                 T.next();
@@ -44,6 +44,9 @@ term (TokenizedInput &T)
                 T.next();
                 num /= atom(T);
                 break;
+
+            default:
+                return num;
         }
     }
 
@@ -57,7 +60,7 @@ expr (TokenizedInput &T)
     int num = term(T);
 
     /* <exprTail> = + <term> <exprTail> | - <term> <exprTail> */
-    while (T.peek().type == TKN_ADD || T.peek().type == TKN_SUB) {
+    while (!T.empty()) {
         switch (T.peek().type) {
             case TKN_ADD:
                 T.next();
@@ -68,6 +71,9 @@ expr (TokenizedInput &T)
                 T.next();
                 num -= term(T);
                 break;
+
+            default:
+                return num;
         }
     }
 

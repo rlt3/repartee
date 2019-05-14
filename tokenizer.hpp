@@ -125,7 +125,7 @@ public:
     std::string
     source_line (Token &t)
     {
-        if (t.line - 1 >= lines.size())
+        if ((unsigned) t.line - 1 >= lines.size())
             return std::string();
         return lines[t.line - 1];
     }

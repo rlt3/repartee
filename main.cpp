@@ -3,8 +3,10 @@
 #include <iostream>
 #include <errno.h>
 #include <string.h>
+
 #include "tokenizer.hpp"
 #include "parser.hpp"
+#include "machine.hpp"
 
 void
 usage (char *prog)
