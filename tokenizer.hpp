@@ -39,6 +39,12 @@ public:
     std::string str;
 };
 
+/*
+ * Holds the list of tokens gathered from an input file. Acts as an input
+ * stream of tokens implementing the common recursive descent parser functions:
+ * next, peek, and match. Also contains the source lines for displaying
+ * erroneous lines.
+ */
 class TokenizedInput {
 public:
     TokenizedInput ()
@@ -54,6 +60,7 @@ public:
         : lines(lines), tokens(tokens), error(std::string())
     { }
 
+    /* Pop the current token and return it */
     Token
     next ()
     {
@@ -64,18 +71,44 @@ public:
         return t;
     }
 
+    /* Return the current token without popping it */
     Token
-    curr ()
+    peek ()
     {
         if (tokens.empty())
             return Token();
         return tokens.front();
     }
 
+    /* Match the current token. If it matches, pop it */
     bool
-    end ()
+    match (enum TokenType type)
+    {
+        if (tokens.empty())
+            return false;
+        if (tokens.front().type != type)
+            return false;
+        tokens.pop_front();
+    }
+
+    bool
+    empty ()
     {
         return tokens.empty();
+    }
+
+    std::string
+    source_line (Token &t)
+    {
+        if (t.line - 1 >= lines.size())
+            return std::string();
+        return lines[t.line - 1];
+    }
+
+    std::vector<std::string>&
+    all_lines ()
+    {
+        return lines;
     }
 
     bool
@@ -90,11 +123,6 @@ public:
         return error;
     }
 
-    std::vector<std::string>&
-    get_lines ()
-    {
-        return lines;
-    }
 
 protected:
     std::vector<std::string> lines;
