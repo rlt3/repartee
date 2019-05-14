@@ -26,6 +26,7 @@ enum TokenType {
 class Token {
 public:
     Token ()
+        : type(TKN_WHITE), str(std::string())
     { }
 
     Token (int l, int c, enum TokenType t, std::string s)
@@ -37,7 +38,19 @@ public:
     int column;
     enum TokenType type;
     std::string str;
+
+    int
+    to_int ()
+    {
+        return std::stoi(str);
+    }
 };
+
+enum TokenizerError {
+    TKNZR_MATCH
+};
+
+typedef void (*TokenizerErrorFunc) (int error_type, Token t, int data);
 
 /*
  * Holds the list of tokens gathered from an input file. Acts as an input
@@ -48,16 +61,16 @@ public:
 class TokenizedInput {
 public:
     TokenizedInput ()
-        : error("Unitialized")
+        : error_func(NULL), error("Unitialized")
     { }
 
     /* Only used when an error occured */
     TokenizedInput (std::string error)
-        : error(error)
+        : error_func(NULL), error(error)
     { }
 
     TokenizedInput (std::vector<std::string> lines, std::deque<Token> tokens)
-        : lines(lines), tokens(tokens), error(std::string())
+        : error_func(NULL), lines(lines), tokens(tokens), error(std::string())
     { }
 
     /* Pop the current token and return it */
@@ -80,15 +93,27 @@ public:
         return tokens.front();
     }
 
-    /* Match the current token. If it matches, pop it */
-    bool
-    match (enum TokenType type)
+    /* Match the current token. If it matches pop and return it */
+    Token
+    expect (enum TokenType type)
     {
-        if (tokens.empty())
-            return false;
-        if (tokens.front().type != type)
-            return false;
-        tokens.pop_front();
+        if (tokens.empty() || tokens.front().type != type) {
+            error_func(TKNZR_MATCH, peek(), type);
+        }
+        return next();
+    }
+
+    void
+    set_runtime_error_func (TokenizerErrorFunc f)
+    {
+        error_func = f;
+    }
+
+    bool
+    terminal ()
+    {
+        /* TODO: if semicolon or empty */
+        return true;
     }
 
     bool
@@ -125,6 +150,7 @@ public:
 
 
 protected:
+    TokenizerErrorFunc error_func;
     std::vector<std::string> lines;
     std::deque<Token> tokens;
     std::string error;
@@ -132,3 +158,6 @@ protected:
 
 /* Tokenize an input file */
 TokenizedInput tokenize (std::istream &input);
+
+/* Get the string representation of a token type */
+std::string tokentype_to_str (int type);
