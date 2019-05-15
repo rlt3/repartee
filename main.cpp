@@ -46,8 +46,17 @@ main (int argc, char **argv)
     if (argc < 2)
         usage(argv[0]);
 
-    TokenizedInput tokens = tokenize_input(argv[1]);
-    parse(tokens);
+    //TokenizedInput tokens = tokenize_input(argv[1]);
+    //parse(tokens);
+
+    Instruction prog[10] = {
+        create_instruction(OP_PUSH, 10),
+        create_instruction(OP_PUSH, 2),
+        create_instruction(OP_MUL, 2),
+        0x0
+    };
+
+    run(prog);
 
     return 0;
 }
