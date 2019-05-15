@@ -45,8 +45,8 @@ item (TokenizedInput &T)
 int
 term (TokenizedInput &T)
 {
-    /* <term> = <atom> <term> | <atom> */
-    int num = atom(T);
+    /* <term> = <item> <term> | <item> */
+    int num = item(T);
 
     /* <termTail> = * <atom> <termTail> | / <atom> <termTail> */
     while (!T.empty()) {
