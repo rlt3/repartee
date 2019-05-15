@@ -20,10 +20,26 @@ error_func (int error_type, Token t, int data)
     exit(1);
 }
 
+int expr (TokenizedInput &T);
+
 int
 atom (TokenizedInput &T)
 {
     return T.expect(TKN_NUMBER).to_int();
+}
+
+int
+item (TokenizedInput &T)
+{
+    if (T.peek().type == TKN_LEFT_PAREN) {
+        T.expect(TKN_LEFT_PAREN);
+        int num = expr(T);
+        T.expect(TKN_RIGHT_PAREN);
+        return num;
+    }
+    else {
+        return atom(T);
+    }
 }
 
 int
@@ -37,12 +53,12 @@ term (TokenizedInput &T)
         switch (T.peek().type) {
             case TKN_MUL:
                 T.next();
-                num *= atom(T);
+                num *= item(T);
                 break;
 
             case TKN_DIV:
                 T.next();
-                num /= atom(T);
+                num /= item(T);
                 break;
 
             default:
