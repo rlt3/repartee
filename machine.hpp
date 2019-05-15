@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <inttypes.h>
 
 typedef uint32_t Instruction;
@@ -15,10 +16,6 @@ enum InsOpcode {
     OP_MUL  = 0x6
 };
 
-Instruction create_instruction (Opcode op, uint32_t imm);
+Instruction create_instruction (Opcode op, int32_t imm);
 
-/*
- * `prog` is a zero terminated list of instructions. Instruction zero (0) is
- * simply halt. Run the given program.
- */
-int run (Instruction *program);
+int run (std::vector<Instruction> program);
