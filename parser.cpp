@@ -1,5 +1,25 @@
 #include <sstream>
+#include <map>
 #include "parser.hpp"
+
+/* 
+ * Very hacky implementation of an environment for holding where variables
+ * are stored.
+ */
+static int num_vars = 0;
+static std::map<std::string, int> var_to_id;
+
+/* create id for the var if it's not already in our map, otherwise return it */
+int
+add_or_get_var_id (std::string var)
+{
+    if (var_to_id.find(var) != var_to_id.end()) {
+        return var_to_id[var];
+    }
+    num_vars++;
+    var_to_id[var] = num_vars;
+    return num_vars;
+}
 
 void 
 error_func (int error_type, Token t, int data)
@@ -8,7 +28,7 @@ error_func (int error_type, Token t, int data)
 
     switch (error_type) {
         case TKNZR_MATCH:
-            s << "Expected " << tokentype_to_str(data);
+            s << "Expected `" << tokentype_to_str(data) << "'";
             s << " instead got `" << t.str << "'";
             s << " on line " << t.line << " column " << t.column;
             break;
@@ -22,10 +42,18 @@ error_func (int error_type, Token t, int data)
 
 void arithmetic (TokenizedInput &T, std::vector<Instruction> &prog);
 
-int
-atom (TokenizedInput &T)
+/* <atom> = number | name */
+void
+atom (TokenizedInput &T, std::vector<Instruction> &prog)
 {
-    return T.expect(TKN_NUMBER).to_int();
+    if (T.peek().type == TKN_NUMBER) {
+        int num = T.expect(TKN_NUMBER).to_int();
+        prog.push_back(create_instruction(OP_PUSH, num));
+    }
+    else {
+        int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
+        prog.push_back(create_instruction(OP_LOAD, var_id));
+    }
 }
 
 void
@@ -37,7 +65,7 @@ item (TokenizedInput &T, std::vector<Instruction> &prog)
         T.expect(TKN_RIGHT_PAREN);
     }
     else {
-        prog.push_back(create_instruction(OP_PUSH, atom(T)));
+        atom(T, prog);
     }
 }
 
@@ -99,10 +127,11 @@ arithmetic (TokenizedInput &T, std::vector<Instruction> &prog)
 void
 expr (TokenizedInput &T, std::vector<Instruction> &prog)
 {
-    if (T.peek().type == TKN_NAME) {
-        std::string var = T.expect(TKN_NAME).str;
+    if (T.peek().type == TKN_NAME && T.peek(1).type == TKN_EQUAL) {
+        int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
         T.expect(TKN_EQUAL);
         arithmetic(T, prog);
+        prog.push_back(create_instruction(OP_STORE, var_id));
     }
     else {
         arithmetic(T, prog);
@@ -114,6 +143,9 @@ parse (TokenizedInput &T)
 {
     std::vector<Instruction> prog;
     T.set_runtime_error_func(error_func);
-    expr(T, prog);
+    while (!T.empty()) {
+        expr(T, prog);
+        T.expect(TKN_SEMICOLON);
+    }
     return prog;
 }

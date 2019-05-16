@@ -2,13 +2,14 @@
 
 # Each expression produce an number equal to its position in the array + 1
 declare -a tests=(
-    "1"
-    "8 - 10 + 4"
-    "3 * 14 / 2 - 18"
-    "                    4                             "
-    "1 + 1 + 1 + 1 + 5 / 5"
-    "18 / (6 / (4 - 2))"
-    "(7)"
+    "1;"
+    "8 - 10 + 4;"
+    "3 * 14 / 2 - 18;"
+    "                    4                             ;"
+    "1 + 1 + 1 + 1 + 5 / 5;"
+    "18 / (6 / (4 - 2));"
+    "(7);"
+    "a = 100 - 36; b = a / 8; b;"
 )
 
 len=${#tests[@]}

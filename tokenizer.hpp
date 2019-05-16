@@ -7,6 +7,7 @@
 
 enum TokenType {
     TKN_WHITE,
+    TKN_EOL,
 
     TKN_ADD,
     TKN_SUB,
@@ -15,6 +16,8 @@ enum TokenType {
 
     TKN_EQUAL,
     TKN_PERIOD,
+    TKN_SEMICOLON,
+
     TKN_LEFT_PAREN,
     TKN_RIGHT_PAREN,
     TKN_LEFT_BRACKET,
@@ -27,7 +30,7 @@ enum TokenType {
 class Token {
 public:
     Token ()
-        : type(TKN_WHITE), str(std::string())
+        : line(0), column(0), type(TKN_WHITE), str(std::string())
     { }
 
     Token (int l, int c, enum TokenType t, std::string s)
@@ -74,12 +77,19 @@ public:
         : error_func(NULL), lines(lines), tokens(tokens), error(std::string())
     { }
 
+    /* Return the EOL token */
+    Token
+    eol ()
+    {
+        return Token(lines.size() - 1, lines.back().length(), TKN_EOL, "EOL");
+    }
+
     /* Pop the current token and return it */
     Token
     next ()
     {
         if (tokens.empty())
-            return Token();
+            return eol();
         Token t = tokens.front();
         tokens.pop_front();
         return t;
@@ -90,8 +100,17 @@ public:
     peek ()
     {
         if (tokens.empty())
-            return Token();
+            return eol();
         return tokens.front();
+    }
+
+    /* Return the nth token without popping it */
+    Token
+    peek (unsigned nth)
+    {
+        if (tokens.empty() || nth >= tokens.size())
+            return eol();
+        return tokens.at(nth);
     }
 
     /* Match the current token. If it matches pop and return it */

@@ -2,7 +2,7 @@
 #include <cstdio>
 #include "machine.hpp"
 
-#define DEBUG false
+#define DEBUG true
 
 #define STACK_DEPTH 250
 #define MEM_DEPTH 250

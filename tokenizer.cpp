@@ -10,6 +10,7 @@ static const std::map<char, enum TokenType> SymTypes = {
     { '*', TKN_MUL },
     { '=', TKN_EQUAL },
     { '.', TKN_PERIOD },
+    { ';', TKN_SEMICOLON },
     { '(', TKN_LEFT_PAREN },
     { ')', TKN_RIGHT_PAREN },
     { '[', TKN_LEFT_BRACKET },
@@ -72,6 +73,9 @@ tokenize (std::istream &input)
         else if (isdigit(c)) {
             t = coalesce(c, input, line, col, TKN_NUMBER, isdigit);
         }
+        else if (isalpha(c)) {
+            t = coalesce(c, input, line, col, TKN_NAME, isalpha);
+        }
         else if (isspace(c)) {
             t = coalesce(c, input, line, col, TKN_WHITE, isspace);
         }
@@ -87,6 +91,8 @@ tokenize (std::istream &input)
         col++;
     }
 
+    /* remove extraneous empty line at the end */
+    lines.pop_back();
     return TokenizedInput(lines, tokens);
 }
 
@@ -101,12 +107,14 @@ tokentype_to_str (int type)
         case TKN_MUL:   return "*";
         case TKN_EQUAL: return "=";
         case TKN_PERIOD: return ".";
+        case TKN_SEMICOLON: return ";";
         case TKN_LEFT_PAREN: return "(";
         case TKN_RIGHT_PAREN: return ")";
         case TKN_LEFT_BRACKET: return "[";
         case TKN_RIGHT_BRACKET: return "]";
         case TKN_NUMBER: return "number";
         case TKN_NAME: return "name";
+        case TKN_EOL: return "EOL";
         default: return "bad token";
     }
 }
