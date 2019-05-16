@@ -2,7 +2,7 @@
 
 # Each expression produce an number equal to its position in the array + 1
 declare -a tests=(
-    "1;"
+    "a = 10 / 2; a == 5;"
     "8 - 10 + 4;"
     "3 * 14 / 2 - 18;"
     "                    4                             ;"
@@ -10,6 +10,7 @@ declare -a tests=(
     "18 / (6 / (4 - 2));"
     "(7);"
     "a = 100 - 36; b = a / 8; b;"
+    "a = (1 == 1); b = 4; ((a + b) * 2) - 1;"
 )
 
 len=${#tests[@]}

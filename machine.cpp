@@ -2,7 +2,7 @@
 #include <cstdio>
 #include "machine.hpp"
 
-#define DEBUG true
+#define DEBUG false
 
 #define STACK_DEPTH 250
 #define MEM_DEPTH 250
@@ -90,6 +90,14 @@ handle_arithmetic (Opcode type, int num)
     stack_push(b);
 }
 
+void
+handle_cmp ()
+{
+    int a = stack_pop();
+    int b = stack_pop();
+    stack_push((a == b));
+}
+
 int
 run (std::vector<Instruction> program)
 {
@@ -145,6 +153,11 @@ run (std::vector<Instruction> program)
                 if (imm < 0 || imm >= MEM_DEPTH)
                     machine_error("segmentation fault\n");
                 mem[imm] = stack_pop();
+                break;
+
+            case OP_CMP:
+                if (DEBUG) printf("cmp\n");
+                handle_cmp();
                 break;
 
             default:

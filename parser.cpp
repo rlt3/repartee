@@ -40,7 +40,7 @@ error_func (int error_type, Token t, int data)
     exit(1);
 }
 
-void arithmetic (TokenizedInput &T, std::vector<Instruction> &prog);
+void comp (TokenizedInput &T, std::vector<Instruction> &prog);
 
 /* <atom> = number | name */
 void
@@ -56,12 +56,13 @@ atom (TokenizedInput &T, std::vector<Instruction> &prog)
     }
 }
 
+/* <item> = (<comp>) | <atom> */
 void
 item (TokenizedInput &T, std::vector<Instruction> &prog)
 {
     if (T.peek().type == TKN_LEFT_PAREN) {
         T.expect(TKN_LEFT_PAREN);
-        arithmetic(T, prog);
+        comp(T, prog);
         T.expect(TKN_RIGHT_PAREN);
     }
     else {
@@ -69,13 +70,15 @@ item (TokenizedInput &T, std::vector<Instruction> &prog)
     }
 }
 
+/* 
+ * <factor> := <item> <factorTail> | <item> 
+ * <factorTail> := * <atom> <factorTail> | / <atom> <factorTail>
+ */
 void
-term (TokenizedInput &T, std::vector<Instruction> &prog)
+factor (TokenizedInput &T, std::vector<Instruction> &prog)
 {
-    /* <term> := <item> <term> | <item> */
     item(T, prog);
 
-    /* <termTail> := * <atom> <termTail> | / <atom> <termTail> */
     while (!T.empty()) {
         switch (T.peek().type) {
             case TKN_MUL:
@@ -96,24 +99,26 @@ term (TokenizedInput &T, std::vector<Instruction> &prog)
     }
 }
 
+/*
+ * <sum> := <factor> | <factor> <sumTail>
+ * <sumTail> := + <factor> <sumTail> | - <factor> <sumTail>
+ */
 void
-arithmetic (TokenizedInput &T, std::vector<Instruction> &prog)
+sum (TokenizedInput &T, std::vector<Instruction> &prog)
 {
-    /* <arithmetic> := <term> | <term> <arithTail> */
-    term(T, prog);
+    factor(T, prog);
 
-    /* <arithTail> := + <term> <arithTail> | - <term> <arithTail> */
     while (!T.empty()) {
         switch (T.peek().type) {
             case TKN_ADD:
                 T.next();
-                term(T, prog);
+                factor(T, prog);
                 prog.push_back(create_instruction(OP_ADD, 2));
                 break;
 
             case TKN_SUB:
                 T.next();
-                term(T, prog);
+                factor(T, prog);
                 prog.push_back(create_instruction(OP_SUB, 2));
                 break;
 
@@ -123,18 +128,36 @@ arithmetic (TokenizedInput &T, std::vector<Instruction> &prog)
     }
 }
 
-/* <expr> := <name> = <arithmetic> | <arithmetic> */
+/* <comp> := <sum> == <sum> | <sum> */
+void
+comp (TokenizedInput &T, std::vector<Instruction> &prog)
+{
+    if (T.peek(1).type == TKN_EQUAL && T.peek(2).type == TKN_EQUAL) {
+        sum(T, prog);
+        T.expect(TKN_EQUAL);
+        T.expect(TKN_EQUAL);
+        sum(T, prog);
+        prog.push_back(create_instruction(OP_CMP, 0));
+    } else {
+        sum(T, prog);
+    }
+}
+
+/* <expr> := <name> = <comp> | <comp> */
 void
 expr (TokenizedInput &T, std::vector<Instruction> &prog)
 {
-    if (T.peek().type == TKN_NAME && T.peek(1).type == TKN_EQUAL) {
+    if (T.peek().type == TKN_NAME &&
+        T.peek(1).type == TKN_EQUAL &&
+        T.peek(2).type != TKN_EQUAL)
+    {
         int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
         T.expect(TKN_EQUAL);
-        arithmetic(T, prog);
+        comp(T, prog);
         prog.push_back(create_instruction(OP_STORE, var_id));
     }
     else {
-        arithmetic(T, prog);
+        comp(T, prog);
     }
 }
 
