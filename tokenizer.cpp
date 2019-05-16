@@ -8,6 +8,7 @@ static const std::map<char, enum TokenType> SymTypes = {
     { '-', TKN_SUB },
     { '/', TKN_DIV },
     { '*', TKN_MUL },
+    { '=', TKN_EQUAL },
     { '.', TKN_PERIOD },
     { '(', TKN_LEFT_PAREN },
     { ')', TKN_RIGHT_PAREN },
@@ -98,6 +99,7 @@ tokentype_to_str (int type)
         case TKN_SUB:   return "-";
         case TKN_DIV:   return "/";
         case TKN_MUL:   return "*";
+        case TKN_EQUAL: return "=";
         case TKN_PERIOD: return ".";
         case TKN_LEFT_PAREN: return "(";
         case TKN_RIGHT_PAREN: return ")";

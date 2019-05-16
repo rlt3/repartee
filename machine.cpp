@@ -5,20 +5,28 @@
 #define DEBUG false
 
 #define STACK_DEPTH 250
+#define MEM_DEPTH 250
 
 static uint8_t stack_index = 0;
 static int32_t stack[STACK_DEPTH] = {0};
+static int32_t mem[MEM_DEPTH] = {0};
 
-int
+void
+machine_error (const char *err)
+{
+    fputs(err, stderr);
+    exit(1);
+}
+
+void
 stack_push (uint32_t val)
 {
     if (stack_index >= STACK_DEPTH)
-        return 1;
+        machine_error("stack overflow\n");
     stack[stack_index] = val;
     stack_index++;
     if (DEBUG)
         printf("  pushed: %d\n", val);
-    return 0;
 }
 
 int32_t
@@ -29,7 +37,7 @@ stack_pop ()
      * codes, i.e. numbers that have bits set in the opcode areas.
      */
     if (stack_index == 0)
-        return 0;
+        machine_error("stack underflow\n");
     int32_t val = stack[stack_index - 1];
     stack_index--;
     if (DEBUG)
@@ -125,8 +133,22 @@ run (std::vector<Instruction> program)
                 handle_arithmetic(OP_MUL, imm);
                 break;
 
+            case OP_LOAD:
+                if (DEBUG) printf("load %d\n", imm);
+                if (imm < 0 || imm >= MEM_DEPTH)
+                    machine_error("segmentation fault\n");
+                stack_push(mem[imm]);
+                break;
+
+            case OP_STORE:
+                if (DEBUG) printf("store %d\n", imm);
+                if (imm < 0 || imm >= MEM_DEPTH)
+                    machine_error("segmentation fault\n");
+                mem[imm] = stack_pop();
+                break;
+
             default:
-                printf("bad instruction. halting\n");
+                machine_error("bad instruction. halting\n");
                 return 0;
         }
     }

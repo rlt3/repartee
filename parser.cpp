@@ -20,7 +20,7 @@ error_func (int error_type, Token t, int data)
     exit(1);
 }
 
-void expr (TokenizedInput &T, std::vector<Instruction> &prog);
+void arithmetic (TokenizedInput &T, std::vector<Instruction> &prog);
 
 int
 atom (TokenizedInput &T)
@@ -33,7 +33,7 @@ item (TokenizedInput &T, std::vector<Instruction> &prog)
 {
     if (T.peek().type == TKN_LEFT_PAREN) {
         T.expect(TKN_LEFT_PAREN);
-        expr(T, prog);
+        arithmetic(T, prog);
         T.expect(TKN_RIGHT_PAREN);
     }
     else {
@@ -44,10 +44,10 @@ item (TokenizedInput &T, std::vector<Instruction> &prog)
 void
 term (TokenizedInput &T, std::vector<Instruction> &prog)
 {
-    /* <term> = <item> <term> | <item> */
+    /* <term> := <item> <term> | <item> */
     item(T, prog);
 
-    /* <termTail> = * <atom> <termTail> | / <atom> <termTail> */
+    /* <termTail> := * <atom> <termTail> | / <atom> <termTail> */
     while (!T.empty()) {
         switch (T.peek().type) {
             case TKN_MUL:
@@ -69,12 +69,12 @@ term (TokenizedInput &T, std::vector<Instruction> &prog)
 }
 
 void
-expr (TokenizedInput &T, std::vector<Instruction> &prog)
+arithmetic (TokenizedInput &T, std::vector<Instruction> &prog)
 {
-    /* <expr> = <term> | <term> <exprTail> */
+    /* <arithmetic> := <term> | <term> <arithTail> */
     term(T, prog);
 
-    /* <exprTail> = + <term> <exprTail> | - <term> <exprTail> */
+    /* <arithTail> := + <term> <arithTail> | - <term> <arithTail> */
     while (!T.empty()) {
         switch (T.peek().type) {
             case TKN_ADD:
@@ -92,6 +92,20 @@ expr (TokenizedInput &T, std::vector<Instruction> &prog)
             default:
                 return;
         }
+    }
+}
+
+/* <expr> := <name> = <arithmetic> | <arithmetic> */
+void
+expr (TokenizedInput &T, std::vector<Instruction> &prog)
+{
+    if (T.peek().type == TKN_NAME) {
+        std::string var = T.expect(TKN_NAME).str;
+        T.expect(TKN_EQUAL);
+        arithmetic(T, prog);
+    }
+    else {
+        arithmetic(T, prog);
     }
 }
 

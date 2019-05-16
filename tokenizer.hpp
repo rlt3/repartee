@@ -13,6 +13,7 @@ enum TokenType {
     TKN_DIV,
     TKN_MUL,
 
+    TKN_EQUAL,
     TKN_PERIOD,
     TKN_LEFT_PAREN,
     TKN_RIGHT_PAREN,
