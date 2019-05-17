@@ -21,6 +21,11 @@ add_or_get_var_id (std::string var)
     return num_vars;
 }
 
+/*
+ * TODO: Can be a general error function with a void pointer data type that can
+ * be casted to a particular type since all references will exist on a stack at
+ * error time. Error types then can be defined in a single place as well.
+ */
 void 
 error_func (int error_type, Token t, int data)
 {

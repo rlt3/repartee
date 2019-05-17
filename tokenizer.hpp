@@ -29,25 +29,17 @@ enum TokenType {
 
 class Token {
 public:
-    Token ()
-        : line(0), column(0), type(TKN_WHITE), str(std::string())
-    { }
-
-    Token (int l, int c, enum TokenType t, std::string s)
-    /* add +1 to line and column counts for human numbers */
-        : line(l + 1), column(c + 1), type(t), str(s)
-    { }
+    Token ();
+    Token (int line, int column, enum TokenType type, std::string s);
 
     int line;
     int column;
     enum TokenType type;
     std::string str;
 
+    /* convert the string representation to an integer */
     int
-    to_int ()
-    {
-        return std::stoi(str);
-    }
+    to_int ();
 };
 
 enum TokenizerError {
@@ -64,112 +56,54 @@ typedef void (*TokenizerErrorFunc) (int error_type, Token t, int data);
  */
 class TokenizedInput {
 public:
-    TokenizedInput ()
-        : error_func(NULL), error("Unitialized")
-    { }
-
+    TokenizedInput ();
     /* Only used when an error occured */
-    TokenizedInput (std::string error)
-        : error_func(NULL), error(error)
-    { }
-
-    TokenizedInput (std::vector<std::string> lines, std::deque<Token> tokens)
-        : error_func(NULL), lines(lines), tokens(tokens), error(std::string())
-    { }
-
-    /* Return the EOL token */
-    Token
-    eol ()
-    {
-        return Token(lines.size() - 1, lines.back().length(), TKN_EOL, "EOL");
-    }
+    TokenizedInput (std::string error);
+    TokenizedInput (std::vector<std::string> lines, std::deque<Token> tokens);
 
     /* Pop the current token and return it */
     Token
-    next ()
-    {
-        if (tokens.empty())
-            return eol();
-        Token t = tokens.front();
-        tokens.pop_front();
-        return t;
-    }
+    next ();
 
     /* Return the current token without popping it */
     Token
-    peek ()
-    {
-        if (tokens.empty())
-            return eol();
-        return tokens.front();
-    }
+    peek ();
 
     /* Return the nth token without popping it */
     Token
-    peek (unsigned nth)
-    {
-        if (tokens.empty() || nth >= tokens.size())
-            return eol();
-        return tokens.at(nth);
-    }
+    peek (unsigned nth);
 
     /* Match the current token. If it matches pop and return it */
     Token
-    expect (enum TokenType type)
-    {
-        if (tokens.empty() || tokens.front().type != type) {
-            error_func(TKNZR_MATCH, peek(), type);
-        }
-        return next();
-    }
+    expect (enum TokenType type);
 
+    /* set error function to call when an error occurs (after tokenization) */
     void
-    set_runtime_error_func (TokenizerErrorFunc f)
-    {
-        error_func = f;
-    }
+    set_runtime_error_func (TokenizerErrorFunc f);
 
     bool
-    terminal ()
-    {
-        /* TODO: if semicolon or empty */
-        return true;
-    }
+    empty ();
 
-    bool
-    empty ()
-    {
-        return tokens.empty();
-    }
-
+    /* return line in the source code for a particular token */
     std::string
-    source_line (Token &t)
-    {
-        if ((unsigned) t.line - 1 >= lines.size())
-            return std::string();
-        return lines[t.line - 1];
-    }
+    source_line (Token &t);
 
     std::vector<std::string>&
-    all_lines ()
-    {
-        return lines;
-    }
+    all_lines ();
 
+    /* if the tokenizer ran into an error while tokenizing */
     bool
-    has_error ()
-    {
-        return !error.empty();
-    }
+    has_error ();
 
+    /* get the error string if there was an error */
     std::string
-    get_error ()
-    {
-        return error;
-    }
-
+    get_error ();
 
 protected:
+    /* Return the EOL token */
+    Token
+    eol ();
+
     TokenizerErrorFunc error_func;
     std::vector<std::string> lines;
     std::deque<Token> tokens;

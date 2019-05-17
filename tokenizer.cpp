@@ -17,6 +17,118 @@ static const std::map<char, enum TokenType> SymTypes = {
     { ']', TKN_RIGHT_BRACKET }
 };
 
+Token::Token ()
+    : line(0), column(0), type(TKN_WHITE), str(std::string())
+{ }
+
+Token::Token (int l, int c, enum TokenType t, std::string s)
+/* add +1 to line and column counts for human numbers */
+    : line(l + 1), column(c + 1), type(t), str(s)
+{ }
+
+int
+Token::to_int ()
+{
+    return std::stoi(str);
+}
+
+TokenizedInput::TokenizedInput ()
+    : error_func(NULL), error("Unitialized")
+{ }
+
+/* Only used when an error occured */
+TokenizedInput::TokenizedInput (std::string error)
+    : error_func(NULL), error(error)
+{ }
+
+TokenizedInput::TokenizedInput (std::vector<std::string> lines, std::deque<Token> tokens)
+    : error_func(NULL), lines(lines), tokens(tokens), error(std::string())
+{ }
+
+/* Pop the current token and return it */
+Token
+TokenizedInput::next ()
+{
+    if (tokens.empty())
+        return eol();
+    Token t = tokens.front();
+    tokens.pop_front();
+    return t;
+}
+
+/* Return the current token without popping it */
+Token
+TokenizedInput::peek ()
+{
+    if (tokens.empty())
+        return eol();
+    return tokens.front();
+}
+
+/* Return the nth token without popping it */
+Token
+TokenizedInput::peek (unsigned nth)
+{
+    if (tokens.empty() || nth >= tokens.size())
+        return eol();
+    return tokens.at(nth);
+}
+
+/* Match the current token. If it matches pop and return it */
+Token
+TokenizedInput::expect (enum TokenType type)
+{
+    if (tokens.empty() || tokens.front().type != type) {
+        error_func(TKNZR_MATCH, peek(), type);
+    }
+    return next();
+}
+
+void
+TokenizedInput::set_runtime_error_func (TokenizerErrorFunc f)
+{
+    error_func = f;
+}
+
+bool
+TokenizedInput::empty ()
+{
+    return tokens.empty();
+}
+
+std::string
+TokenizedInput::source_line (Token &t)
+{
+    if ((unsigned) t.line - 1 >= lines.size())
+        return std::string();
+    return lines[t.line - 1];
+}
+
+std::vector<std::string>&
+TokenizedInput::all_lines ()
+{
+    return lines;
+}
+
+bool
+TokenizedInput::has_error ()
+{
+    return !error.empty();
+}
+
+std::string
+TokenizedInput::get_error ()
+{
+    return error;
+}
+
+/* Return the EOL token */
+Token
+TokenizedInput::eol ()
+{
+    return Token(lines.size() - 1, lines.back().length(), TKN_EOL, "EOL");
+}
+
 /* 
  * Join all individual characters of a particular type into a single token 
  * using the type function given.

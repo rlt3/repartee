@@ -7,6 +7,7 @@
 #include "tokenizer.hpp"
 #include "parser.hpp"
 #include "machine.hpp"
+#include "environment.hpp"
 
 void
 usage (char *prog)
