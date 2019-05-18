@@ -1,5 +1,6 @@
 #include <sstream>
 #include <map>
+#include "environment.hpp"
 #include "parser.hpp"
 
 /* 
@@ -170,7 +171,10 @@ std::vector<Instruction>
 parse (TokenizedInput &T)
 {
     std::vector<Instruction> prog;
+    Environment E(NULL);
+
     T.set_runtime_error_func(error_func);
+
     while (!T.empty()) {
         expr(T, prog);
         T.expect(TKN_SEMICOLON);

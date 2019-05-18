@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 #include "tokenizer.hpp"
 #include "machine.hpp"
 
@@ -15,8 +16,18 @@ class Environment {
 public:
     Environment (Environment *parent);
 
+    /* register a symbol in the environment */
+    void
+    reg_sym (std::string sym, Node *n);
+
+    /* add a new tree path of code execution */
+    void
+    add_node (Node *n);
+
 protected:
     Environment *parent;
+    std::unordered_map<std::string, Node*> symbols;
+    std::vector<Node*> nodes;
 };
 
 class Node {
@@ -45,4 +56,16 @@ protected:
 class AssignmentNode : public Node {
 public:
     AssignmentNode (Environment *env, Token t);
+};
+
+class VarNode : public Node {
+public:
+    VarNode (Environment *env, Token t);
+};
+
+class OperatorNode : public Node {
+public:
+    OperatorNode (Environment *env, Token t);
+private:
+    std::vector<int> foobar;
 };
