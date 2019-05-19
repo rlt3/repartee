@@ -87,10 +87,20 @@ factor (TokenizedInput &T, Node *N)
     item(T, &tmp);
 
     if (T.peek().type == TKN_MUL || T.peek().type == TKN_DIV) {
-        Node *op = new OperatorNode(N->env, T.next().type);
-        N->add_child(op);
-        op->merge(&tmp);
-        factor(T, op);
+        Node *next, *curr;
+        next = curr = NULL;
+
+        while (T.peek().type == TKN_MUL || T.peek().type == TKN_DIV) {
+            next = new OperatorNode(N->env, T.next().type);
+            if (curr)
+                next->add_child(curr);
+            else
+                next->merge(&tmp);
+            item(T, next);
+            curr = next;
+        }
+
+        N->add_child(curr);
     } else {
         N->merge(&tmp);
     }
@@ -106,11 +116,27 @@ sum (TokenizedInput &T, Node *N)
     Node tmp(N->env);
     factor(T, &tmp);
 
+    /* 
+     * Recurse (iteratively) down the sum and construct the tree from the
+     * bottom-up. If we constructed the tree as we parsed it then arithmetic
+     * expressions would be right-associative when they are naturally left
+     * associative.
+     */
     if (T.peek().type == TKN_ADD || T.peek().type == TKN_SUB) {
-        Node *op = new OperatorNode(N->env, T.next().type);
-        N->add_child(op);
-        op->merge(&tmp);
-        sum(T, op);
+        Node *next, *curr;
+        next = curr = NULL;
+
+        while (T.peek().type == TKN_ADD || T.peek().type == TKN_SUB) {
+            next = new OperatorNode(N->env, T.next().type);
+            if (curr)
+                next->add_child(curr);
+            else
+                next->merge(&tmp);
+            factor(T, next);
+            curr = next;
+        }
+
+        N->add_child(curr);
     } else {
         N->merge(&tmp);
     }

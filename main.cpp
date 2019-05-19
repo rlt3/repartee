@@ -50,7 +50,7 @@ main (int argc, char **argv)
     TokenizedInput tokens = tokenize_input(argv[1]);
     Environment E = parse(tokens);
     
-    E.nodes[0]->print(0);
+    //E.nodes[0]->print(0);
     std::vector<Instruction> prog;
     for (auto N : E.nodes)
         N->gen_code(prog);
