@@ -15,6 +15,7 @@ class Node;
 class Environment {
 public:
     Environment (Environment *parent);
+    ~Environment ();
 
     /* register a symbol in the environment */
     void
@@ -24,10 +25,11 @@ public:
     void
     add_node (Node *n);
 
+    std::vector<Node*> nodes;
+
 protected:
     Environment *parent;
     std::unordered_map<std::string, Node*> symbols;
-    std::vector<Node*> nodes;
 };
 
 class Node {
@@ -37,35 +39,51 @@ public:
      * environment. The environments of a particular node and its children can
      * all be the same or some different.
      */
-    Node (Environment *env, Token t);
-
+    Node (Environment *env);
     virtual ~Node();
 
-    void
-    add_child (Node *child);
+    void add_child (Node *child);
+    void merge (Node *other);
 
     /* actually generate the byte code */
-    virtual void
-    gen_code (std::vector<Instruction> &prog);
+    virtual void gen_code (std::vector<Instruction> &prog);
 
-protected:
+    virtual void print (int lvl);
+    virtual std::string name ();
+
     Environment *env;
+
     std::vector<Node*> children;
 };
 
 class AssignmentNode : public Node {
 public:
-    AssignmentNode (Environment *env, Token t);
+    AssignmentNode (Environment *env, int var_id);
+    void gen_code (std::vector<Instruction> &prog);
+    std::string name ();
+    int var_id;
 };
 
 class VarNode : public Node {
 public:
-    VarNode (Environment *env, Token t);
+    VarNode (Environment *env, int id);
+    void gen_code (std::vector<Instruction> &prog);
+    std::string name ();
+    int var_id;
+};
+
+class AtomNode : public Node {
+public:
+    AtomNode (Environment *env, int value);
+    void gen_code (std::vector<Instruction> &prog);
+    std::string name ();
+    int value;
 };
 
 class OperatorNode : public Node {
 public:
-    OperatorNode (Environment *env, Token t);
-private:
-    std::vector<int> foobar;
+    OperatorNode (Environment *env, int type);
+    void gen_code (std::vector<Instruction> &prog);
+    std::string name ();
+    int type;
 };

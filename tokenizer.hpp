@@ -15,6 +15,7 @@ enum TokenType {
     TKN_MUL,
 
     TKN_EQUAL,
+    TKN_DBL_EQUAL,
     TKN_PERIOD,
     TKN_SEMICOLON,
 

@@ -1,7 +1,7 @@
 #include <sstream>
 #include <map>
-#include "environment.hpp"
 #include "parser.hpp"
+#include "machine.hpp"
 
 /* 
  * Very hacky implementation of an environment for holding where variables
@@ -46,33 +46,33 @@ error_func (int error_type, Token t, int data)
     exit(1);
 }
 
-void comp (TokenizedInput &T, std::vector<Instruction> &prog);
+void comp (TokenizedInput &T, Node *N);
 
 /* <atom> = number | name */
 void
-atom (TokenizedInput &T, std::vector<Instruction> &prog)
+atom (TokenizedInput &T, Node *N)
 {
     if (T.peek().type == TKN_NUMBER) {
         int num = T.expect(TKN_NUMBER).to_int();
-        prog.push_back(create_instruction(OP_PUSH, num));
+        N->add_child(new AtomNode(N->env, num));
     }
     else {
         int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
-        prog.push_back(create_instruction(OP_LOAD, var_id));
+        N->add_child(new VarNode(N->env, var_id));
     }
 }
 
 /* <item> = (<comp>) | <atom> */
 void
-item (TokenizedInput &T, std::vector<Instruction> &prog)
+item (TokenizedInput &T, Node *N)
 {
     if (T.peek().type == TKN_LEFT_PAREN) {
         T.expect(TKN_LEFT_PAREN);
-        comp(T, prog);
+        comp(T, N);
         T.expect(TKN_RIGHT_PAREN);
     }
     else {
-        atom(T, prog);
+        atom(T, N);
     }
 }
 
@@ -81,28 +81,31 @@ item (TokenizedInput &T, std::vector<Instruction> &prog)
  * <factorTail> := * <atom> <factorTail> | / <atom> <factorTail>
  */
 void
-factor (TokenizedInput &T, std::vector<Instruction> &prog)
+factor (TokenizedInput &T, Node *N)
 {
-    item(T, prog);
+    Node *op;
+    item(T, N);
 
-    while (!T.empty()) {
-        switch (T.peek().type) {
-            case TKN_MUL:
-                T.next();
-                item(T, prog);
-                prog.push_back(create_instruction(OP_MUL, 2));
-                break;
+    //while (!T.empty()) {
+    //    switch (T.peek().type) {
+    //        case TKN_MUL:
+    //            T.next();
+    //            op = new OperatorNode(N->env, TKN_MUL);
+    //            N->add_child(op);
+    //            item(T, op);
+    //            break;
 
-            case TKN_DIV:
-                T.next();
-                item(T, prog);
-                prog.push_back(create_instruction(OP_DIV, 2));
-                break;
+    //        case TKN_DIV:
+    //            T.next();
+    //            op = new OperatorNode(N->env, TKN_DIV);
+    //            N->add_child(op);
+    //            item(T, op);
+    //            break;
 
-            default:
-                return;
-        }
-    }
+    //        default:
+    //            return;
+    //    }
+    //}
 }
 
 /*
@@ -110,74 +113,88 @@ factor (TokenizedInput &T, std::vector<Instruction> &prog)
  * <sumTail> := + <factor> <sumTail> | - <factor> <sumTail>
  */
 void
-sum (TokenizedInput &T, std::vector<Instruction> &prog)
+sum (TokenizedInput &T, Node *N)
 {
-    factor(T, prog);
+    Node *op;
+    Node tmp(N->env);
+    factor(T, &tmp);
+
+    if (!(T.peek().type == TKN_ADD || T.peek().type == TKN_SUB))
+        goto exit;
 
     while (!T.empty()) {
         switch (T.peek().type) {
             case TKN_ADD:
                 T.next();
-                factor(T, prog);
-                prog.push_back(create_instruction(OP_ADD, 2));
+                op = new OperatorNode(N->env, TKN_ADD);
+                N->add_child(op);
+                op->merge(&tmp);
+                factor(T, op);
                 break;
 
             case TKN_SUB:
                 T.next();
-                factor(T, prog);
-                prog.push_back(create_instruction(OP_SUB, 2));
+                op = new OperatorNode(N->env, TKN_SUB);
+                N->add_child(op);
+                op->merge(&tmp);
+                factor(T, op);
                 break;
 
             default:
-                return;
+                goto exit;
         }
     }
+
+exit:
+    N->merge(&tmp);
 }
 
 /* <comp> := <sum> == <sum> | <sum> */
 void
-comp (TokenizedInput &T, std::vector<Instruction> &prog)
+comp (TokenizedInput &T, Node *N)
 {
-    if (T.peek(1).type == TKN_EQUAL && T.peek(2).type == TKN_EQUAL) {
-        sum(T, prog);
-        T.expect(TKN_EQUAL);
-        T.expect(TKN_EQUAL);
-        sum(T, prog);
-        prog.push_back(create_instruction(OP_CMP, 0));
-    } else {
-        sum(T, prog);
-    }
+    sum(T, N);
+    //if (T.peek().type == TKN_DBL_EQUAL) {
+    //    Node *cmp = new OperatorNode(N->env, TKN_DBL_EQUAL);
+    //    sum(T, cmp);
+    //    T.expect(TKN_DBL_EQUAL);
+    //    sum(T, cmp);
+    //} else {
+    //    sum(T, N);
+    //}
 }
 
 /* <expr> := <name> = <comp> | <comp> */
 void
-expr (TokenizedInput &T, std::vector<Instruction> &prog)
+expr (TokenizedInput &T, Node *N)
 {
-    if (T.peek().type == TKN_NAME &&
-        T.peek(1).type == TKN_EQUAL &&
-        T.peek(2).type != TKN_EQUAL)
-    {
+    if (T.peek().type == TKN_NAME && T.peek(1).type == TKN_EQUAL) {
+        /* TODO: make this apart of the environment */
         int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
         T.expect(TKN_EQUAL);
-        comp(T, prog);
-        prog.push_back(create_instruction(OP_STORE, var_id));
+
+        Node *assign = new AssignmentNode(N->env, var_id);
+        N->add_child(assign);
+        comp(T, assign);
     }
     else {
-        comp(T, prog);
+        comp(T, N);
     }
 }
 
-std::vector<Instruction>
+Environment
 parse (TokenizedInput &T)
 {
-    std::vector<Instruction> prog;
     Environment E(NULL);
 
     T.set_runtime_error_func(error_func);
 
     while (!T.empty()) {
-        expr(T, prog);
+        Node *N = new Node(&E);
+        E.add_node(N);
+        expr(T, N);
         T.expect(TKN_SEMICOLON);
     }
-    return prog;
+
+    return E;
 }

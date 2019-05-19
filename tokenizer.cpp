@@ -129,6 +129,35 @@ TokenizedInput::eol ()
     return Token(lines.size() - 1, lines.back().length(), TKN_EOL, "EOL");
 }
 
+bool
+has_double (int c)
+{
+    switch (c) {
+        case '=':
+        //case '&':
+        //case '|':
+            return true;
+    }
+    return false;
+}
+
+Token
+handle_double (char c, std::istream &input, int line, int &col, 
+               enum TokenType other)
+{
+    char n;
+    if (input.get(n) && c == n) {
+        col++;
+        switch (c) {
+            case '=': return Token(line, col, TKN_DBL_EQUAL, "==");
+            //case '&':
+            //case '|':
+        }
+    }
+    input.putback(n);
+    return Token(line, col, other, std::string(1, c));
+}
+
 /* 
  * Join all individual characters of a particular type into a single token 
  * using the type function given.
@@ -180,7 +209,10 @@ tokenize (std::istream &input)
         }
 
         if (SymTypes.find(c) != SymTypes.end()) {
-            t = Token(line, col, SymTypes.at(c), std::string(1, c));
+            if (has_double(c))
+                t = handle_double(c, input, line, col, SymTypes.at(c));
+            else
+                t = Token(line, col, SymTypes.at(c), std::string(1, c));
         }
         else if (isdigit(c)) {
             t = coalesce(c, input, line, col, TKN_NUMBER, isdigit);
@@ -218,6 +250,7 @@ tokentype_to_str (int type)
         case TKN_DIV:   return "/";
         case TKN_MUL:   return "*";
         case TKN_EQUAL: return "=";
+        case TKN_DBL_EQUAL: return "==";
         case TKN_PERIOD: return ".";
         case TKN_SEMICOLON: return ";";
         case TKN_LEFT_PAREN: return "(";
