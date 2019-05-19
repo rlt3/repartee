@@ -46,33 +46,33 @@ error_func (int error_type, Token t, int data)
     exit(1);
 }
 
-void comp (TokenizedInput &T, Node *N);
+void comp (TokenizedInput &T, Environment &E, Node *N);
 
 /* <atom> = number | name */
 void
-atom (TokenizedInput &T, Node *N)
+atom (TokenizedInput &T, Environment &E, Node *N)
 {
     if (T.peek().type == TKN_NUMBER) {
         int num = T.expect(TKN_NUMBER).to_int();
-        N->add_child(new AtomNode(N->env, num));
+        N->add_child(E.node(AtomNode(num)));
     }
     else {
         int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
-        N->add_child(new VarNode(N->env, var_id));
+        N->add_child(E.node(VarNode(var_id)));
     }
 }
 
 /* <item> = (<comp>) | <atom> */
 void
-item (TokenizedInput &T, Node *N)
+item (TokenizedInput &T, Environment &E, Node *N)
 {
     if (T.peek().type == TKN_LEFT_PAREN) {
         T.expect(TKN_LEFT_PAREN);
-        comp(T, N);
+        comp(T, E, N);
         T.expect(TKN_RIGHT_PAREN);
     }
     else {
-        atom(T, N);
+        atom(T, E, N);
     }
 }
 
@@ -81,10 +81,10 @@ item (TokenizedInput &T, Node *N)
  * <factorTail> := * <atom> <factorTail> | / <atom> <factorTail>
  */
 void
-factor (TokenizedInput &T, Node *N)
+factor (TokenizedInput &T, Environment &E, Node *N)
 {
-    Node tmp(N->env);
-    item(T, &tmp);
+    Node tmp;
+    item(T, E, &tmp);
 
     /* For explanation see: sum */
     if (T.peek().type == TKN_MUL || T.peek().type == TKN_DIV) {
@@ -92,12 +92,12 @@ factor (TokenizedInput &T, Node *N)
         next = curr = NULL;
 
         while (T.peek().type == TKN_MUL || T.peek().type == TKN_DIV) {
-            next = new OperatorNode(N->env, T.next().type);
+            next = E.node(OperatorNode(T.next().type));
             if (curr)
                 next->add_child(curr);
             else
                 next->merge(&tmp);
-            item(T, next);
+            item(T, E, next);
             curr = next;
         }
 
@@ -112,10 +112,10 @@ factor (TokenizedInput &T, Node *N)
  * <sumTail> := + <factor> <sumTail> | - <factor> <sumTail>
  */
 void
-sum (TokenizedInput &T, Node *N)
+sum (TokenizedInput &T, Environment &E, Node *N)
 {
-    Node tmp(N->env);
-    factor(T, &tmp);
+    Node tmp;
+    factor(T, E, &tmp);
 
     /* 
      * Recurse (iteratively) down the sum and construct the tree from the
@@ -128,7 +128,7 @@ sum (TokenizedInput &T, Node *N)
         next = curr = NULL;
 
         while (T.peek().type == TKN_ADD || T.peek().type == TKN_SUB) {
-            next = new OperatorNode(N->env, T.next().type);
+            next = E.node(OperatorNode(T.next().type));
             /* 
              * add the last parsed expression as a child of the current one
              * since we are building the tree in 'reverse'
@@ -141,7 +141,7 @@ sum (TokenizedInput &T, Node *N)
              */
             else
                 next->merge(&tmp);
-            factor(T, next);
+            factor(T, E, next);
             /* curr will be the child of whatever is parsed or child of N */
             curr = next;
         }
@@ -154,17 +154,17 @@ sum (TokenizedInput &T, Node *N)
 
 /* <comp> := <sum> == <sum> | <sum> */
 void
-comp (TokenizedInput &T, Node *N)
+comp (TokenizedInput &T, Environment &E, Node *N)
 {
-    Node tmp(N->env);
-    sum(T, &tmp);
+    Node tmp;
+    sum(T, E, &tmp);
 
     if (T.peek().type == TKN_DBL_EQUAL) {
         T.expect(TKN_DBL_EQUAL);
-        Node *cmp = new OperatorNode(N->env, TKN_DBL_EQUAL);
+        Node *cmp = E.node(OperatorNode(TKN_DBL_EQUAL));
         N->add_child(cmp);
         cmp->merge(&tmp);
-        sum(T, cmp);
+        sum(T, E, cmp);
     } else {
         N->merge(&tmp);
     }
@@ -172,33 +172,31 @@ comp (TokenizedInput &T, Node *N)
 
 /* <expr> := <name> = <comp> | <comp> */
 void
-expr (TokenizedInput &T, Node *N)
+expr (TokenizedInput &T, Environment &E, Node *N)
 {
     if (T.peek().type == TKN_NAME && T.peek(1).type == TKN_EQUAL) {
         /* TODO: make this apart of the environment */
         int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
         T.expect(TKN_EQUAL);
 
-        Node *assign = new AssignmentNode(N->env, var_id);
+        Node *assign = E.node(AssignmentNode(var_id));
         N->add_child(assign);
-        comp(T, assign);
+        comp(T, E, assign);
     }
     else {
-        comp(T, N);
+        comp(T, E, N);
     }
 }
 
 Environment
 parse (TokenizedInput &T)
 {
-    Environment E(NULL);
-
     T.set_runtime_error_func(error_func);
+    Environment E(NULL);
+    Node *N = E.root();
 
     while (!T.empty()) {
-        Node *N = new Node(&E);
-        E.add_node(N);
-        expr(T, N);
+        expr(T, E, N);
         T.expect(TKN_SEMICOLON);
     }
 

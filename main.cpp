@@ -52,8 +52,7 @@ main (int argc, char **argv)
     
     //E.nodes[0]->print(0);
     std::vector<Instruction> prog;
-    for (auto N : E.nodes)
-        N->gen_code(prog);
+    E.nodes[0]->gen_code(prog);
     printf("%d\n", run(prog));
     
     return 0;
