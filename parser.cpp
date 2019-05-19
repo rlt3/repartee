@@ -86,6 +86,7 @@ factor (TokenizedInput &T, Node *N)
     Node tmp(N->env);
     item(T, &tmp);
 
+    /* For explanation see: sum */
     if (T.peek().type == TKN_MUL || T.peek().type == TKN_DIV) {
         Node *next, *curr;
         next = curr = NULL;
@@ -128,11 +129,20 @@ sum (TokenizedInput &T, Node *N)
 
         while (T.peek().type == TKN_ADD || T.peek().type == TKN_SUB) {
             next = new OperatorNode(N->env, T.next().type);
+            /* 
+             * add the last parsed expression as a child of the current one
+             * since we are building the tree in 'reverse'
+             */
             if (curr)
                 next->add_child(curr);
+            /* 
+             * if !curr then we are at the top of the tree and we can add the
+             * left part of the originally parsed expression (top of this func).
+             */
             else
                 next->merge(&tmp);
             factor(T, next);
+            /* curr will be the child of whatever is parsed or child of N */
             curr = next;
         }
 
