@@ -48,9 +48,21 @@ Node::merge (Node *other)
     other->children.clear();
 }
 
-/* actually generate the byte code */
 void
 Node::gen_code (std::vector<Instruction> &prog)
+{
+    if (children.size() == 0)
+        return;
+
+    for (auto C : children) {
+        C->gen_code(prog);
+        C->code(prog);
+    }
+}
+
+/* actually generate the byte code */
+void
+Node::code (std::vector<Instruction> &prog)
 {
     fputs("Bad!!!\n", stderr);
     exit(1);
@@ -61,7 +73,7 @@ AssignmentNode::AssignmentNode (Environment *env, int var_id)
 { }
 
 void
-AssignmentNode::gen_code (std::vector<Instruction> &prog)
+AssignmentNode::code (std::vector<Instruction> &prog)
 {
     /* assignment node */
     prog.push_back(create_instruction(OP_STORE, var_id));
@@ -72,7 +84,7 @@ VarNode::VarNode (Environment *env, int var_id)
 { }
 
 void
-VarNode::gen_code (std::vector<Instruction> &prog)
+VarNode::code (std::vector<Instruction> &prog)
 {
     prog.push_back(create_instruction(OP_LOAD, var_id));
 }
@@ -82,7 +94,7 @@ AtomNode::AtomNode (Environment *env, int value)
 { }
 
 void
-AtomNode::gen_code (std::vector<Instruction> &prog)
+AtomNode::code (std::vector<Instruction> &prog)
 {
     prog.push_back(create_instruction(OP_PUSH, value));
 }
@@ -92,7 +104,7 @@ OperatorNode::OperatorNode (Environment *env, int type)
 { }
 
 void
-OperatorNode::gen_code (std::vector<Instruction> &prog)
+OperatorNode::code (std::vector<Instruction> &prog)
 {
     switch (type) {
         case TKN_ADD:

@@ -51,21 +51,10 @@ main (int argc, char **argv)
     Environment E = parse(tokens);
     
     E.nodes[0]->print(0);
-
-    //printf("%d\n", run(prog));
+    std::vector<Instruction> prog;
+    for (auto N : E.nodes)
+        N->gen_code(prog);
+    printf("%d\n", run(prog));
     
-    //Environment E(NULL);
-
-    //Node *N = new AssignmentNode(&E, Token());
-    //Node *L = new VarNode(&E, Token());
-    //Node *R = new OperatorNode(&E, Token());
-
-    //N->add_child(L);
-    //N->add_child(R);
-    //R->add_child(new VarNode(&E, Token()));
-    //R->add_child(new OperatorNode(&E, Token()));
-
-    //delete N;
-
     return 0;
 }

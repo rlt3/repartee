@@ -62,107 +62,39 @@ atom (TokenizedInput &T, Node *N)
     }
 }
 
-///* <item> = (<comp>) | <atom> */
-//void
-//item (TokenizedInput &T, Node *N)
-//{
-//    if (T.peek().type == TKN_LEFT_PAREN) {
-//        T.expect(TKN_LEFT_PAREN);
-//        comp(T, N);
-//        T.expect(TKN_RIGHT_PAREN);
-//    }
-//    else {
-//        atom(T, N);
-//    }
-//}
-//
-///* 
-// * <factor> := <item> <factorTail> | <item> 
-// * <factorTail> := * <atom> <factorTail> | / <atom> <factorTail>
-// */
-//void
-//factor (TokenizedInput &T, Node *N)
-//{
-//    Node *op;
-//    item(T, N);
-//
-//    //while (!T.empty()) {
-//    //    switch (T.peek().type) {
-//    //        case TKN_MUL:
-//    //            T.next();
-//    //            op = new OperatorNode(N->env, TKN_MUL);
-//    //            N->add_child(op);
-//    //            item(T, op);
-//    //            break;
-//
-//    //        case TKN_DIV:
-//    //            T.next();
-//    //            op = new OperatorNode(N->env, TKN_DIV);
-//    //            N->add_child(op);
-//    //            item(T, op);
-//    //            break;
-//
-//    //        default:
-//    //            return;
-//    //    }
-//    //}
-//}
-//
-///*
-// * <sum> := <factor> | <factor> <sumTail>
-// * <sumTail> := + <factor> <sumTail> | - <factor> <sumTail>
-// */
-//void
-//sum (TokenizedInput &T, Node *N)
-//{
-//    Node *op;
-//    Node tmp(N->env);
-//    factor(T, &tmp);
-//
-//    if (!(T.peek().type == TKN_ADD || T.peek().type == TKN_SUB))
-//        goto exit;
-//
-//    while (!T.empty()) {
-//        switch (T.peek().type) {
-//            case TKN_ADD:
-//                T.next();
-//                op = new OperatorNode(N->env, TKN_ADD);
-//                N->add_child(op);
-//                op->merge(&tmp);
-//                factor(T, op);
-//                break;
-//
-//            case TKN_SUB:
-//                T.next();
-//                op = new OperatorNode(N->env, TKN_SUB);
-//                N->add_child(op);
-//                op->merge(&tmp);
-//                factor(T, op);
-//                break;
-//
-//            default:
-//                goto exit;
-//        }
-//    }
-//
-//exit:
-//    N->merge(&tmp);
-//}
-//
-///* <comp> := <sum> == <sum> | <sum> */
-//void
-//comp (TokenizedInput &T, Node *N)
-//{
-//    sum(T, N);
-//    //if (T.peek().type == TKN_DBL_EQUAL) {
-//    //    Node *cmp = new OperatorNode(N->env, TKN_DBL_EQUAL);
-//    //    sum(T, cmp);
-//    //    T.expect(TKN_DBL_EQUAL);
-//    //    sum(T, cmp);
-//    //} else {
-//    //    sum(T, N);
-//    //}
-//}
+/* <item> = (<comp>) | <atom> */
+void
+item (TokenizedInput &T, Node *N)
+{
+    if (T.peek().type == TKN_LEFT_PAREN) {
+        T.expect(TKN_LEFT_PAREN);
+        comp(T, N);
+        T.expect(TKN_RIGHT_PAREN);
+    }
+    else {
+        atom(T, N);
+    }
+}
+
+/* 
+ * <factor> := <item> <factorTail> | <item> 
+ * <factorTail> := * <atom> <factorTail> | / <atom> <factorTail>
+ */
+void
+factor (TokenizedInput &T, Node *N)
+{
+    Node tmp(N->env);
+    item(T, &tmp);
+
+    if (T.peek().type == TKN_MUL || T.peek().type == TKN_DIV) {
+        Node *op = new OperatorNode(N->env, T.next().type);
+        N->add_child(op);
+        op->merge(&tmp);
+        factor(T, op);
+    } else {
+        N->merge(&tmp);
+    }
+}
 
 /*
  * <sum> := <factor> | <factor> <sumTail>
@@ -172,7 +104,7 @@ void
 sum (TokenizedInput &T, Node *N)
 {
     Node tmp(N->env);
-    atom(T, &tmp);
+    factor(T, &tmp);
 
     if (T.peek().type == TKN_ADD || T.peek().type == TKN_SUB) {
         Node *op = new OperatorNode(N->env, T.next().type);
@@ -184,22 +116,40 @@ sum (TokenizedInput &T, Node *N)
     }
 }
 
+/* <comp> := <sum> == <sum> | <sum> */
+void
+comp (TokenizedInput &T, Node *N)
+{
+    Node tmp(N->env);
+    sum(T, &tmp);
+
+    if (T.peek().type == TKN_DBL_EQUAL) {
+        T.expect(TKN_DBL_EQUAL);
+        Node *cmp = new OperatorNode(N->env, TKN_DBL_EQUAL);
+        N->add_child(cmp);
+        cmp->merge(&tmp);
+        sum(T, cmp);
+    } else {
+        N->merge(&tmp);
+    }
+}
+
 /* <expr> := <name> = <comp> | <comp> */
 void
 expr (TokenizedInput &T, Node *N)
 {
-    //if (T.peek().type == TKN_NAME && T.peek(1).type == TKN_EQUAL) {
-    //    /* TODO: make this apart of the environment */
-    //    int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
-    //    T.expect(TKN_EQUAL);
+    if (T.peek().type == TKN_NAME && T.peek(1).type == TKN_EQUAL) {
+        /* TODO: make this apart of the environment */
+        int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
+        T.expect(TKN_EQUAL);
 
-    //    Node *assign = new AssignmentNode(N->env, var_id);
-    //    N->add_child(assign);
-    //    comp(T, assign);
-    //}
-    //else {
-        sum(T, N);
-    //}
+        Node *assign = new AssignmentNode(N->env, var_id);
+        N->add_child(assign);
+        comp(T, assign);
+    }
+    else {
+        comp(T, N);
+    }
 }
 
 Environment
