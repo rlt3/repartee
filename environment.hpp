@@ -174,7 +174,7 @@ public:
         }
 
         /* patch the original negation jump instruction */
-        prog[cond_patch] = create_instruction(OP_JNZ, prog.size());
+        prog[cond_patch] = create_instruction(OP_JEZ, prog.size());
 
         if (falseb) {
             falseb->gen_code(prog);

@@ -79,11 +79,28 @@ handle_arithmetic (Opcode type, int num)
         a = stack_pop();
         num--;
         switch (type) {
-            case OP_ADD: b = a + b; break;
-            case OP_SUB: b = a - b; break;
-            case OP_MUL: b = a * b; break;
-            case OP_DIV: b = a / b; break;
-            default: break;
+            case OP_ADD:
+                if (DEBUG) printf("add %d\n", num);
+                b = a + b;
+                break;
+
+            case OP_SUB:
+                if (DEBUG) printf("sub %d\n", num);
+                b = a - b;
+                break;
+
+            case OP_DIV:
+                if (DEBUG) printf("div %d\n", num);
+                b = a / b;
+                break;
+
+            case OP_MUL:
+                if (DEBUG) printf("mul %d\n", num);
+                b = a * b;
+                break;
+
+            default:
+                break;
         }
     } while (num > 0);
 
@@ -98,18 +115,66 @@ handle_cmp ()
     stack_push((a == b));
 }
 
+unsigned long
+handle_jmp (unsigned long pc, Opcode op, int imm)
+{
+    int a;
+    switch (op) {
+            case OP_J:
+                if (DEBUG) printf("j %d\n", imm);
+                return imm;
+
+            case OP_JEZ:
+                if (DEBUG) printf("jez %d\n", imm);
+                a = stack_pop();
+                if (a == 0)
+                    return imm;
+                break;
+
+            case OP_JNZ:
+                if (DEBUG) printf("jnz %d\n", imm);
+                a = stack_pop();
+                if (a != 0)
+                    return imm;
+                break;
+
+            case OP_JGZ:
+                if (DEBUG) printf("jgz %d\n", imm);
+                a = stack_pop();
+                if (a > 0)
+                    return imm;
+                break;
+
+            case OP_JLZ:
+                if (DEBUG) printf("jlz %d\n", imm);
+                a = stack_pop();
+                if (a < 0)
+                    return imm;
+                break;
+
+            default:
+                machine_error("bad jump");
+    }
+    return pc;
+}
+
 int
 run (std::vector<Instruction> program)
 {
+    Instruction instruction;
+    unsigned long pc = 0;
+    Opcode op;
     int imm;
 
-    for (auto instruction : program) {
+    while (true) {
+        instruction = program[pc++];
         imm = get_imm(instruction);
+        op = get_opcode(instruction);
 
-        switch (get_opcode(instruction)) {
+        switch (op) {
             case OP_HALT:
                 if (DEBUG) printf("halt %d\n", imm);
-                return 0;
+                goto exit;
 
             case OP_PUSH:
                 if (DEBUG) printf("push %d\n", imm);
@@ -122,23 +187,10 @@ run (std::vector<Instruction> program)
                 break;
 
             case OP_ADD:
-                if (DEBUG) printf("add %d\n", imm);
-                handle_arithmetic(OP_ADD, imm);
-                break;
-
             case OP_SUB:
-                if (DEBUG) printf("sub %d\n", imm);
-                handle_arithmetic(OP_SUB, imm);
-                break;
-
             case OP_DIV:
-                if (DEBUG) printf("div %d\n", imm);
-                handle_arithmetic(OP_DIV, imm);
-                break;
-
             case OP_MUL:
-                if (DEBUG) printf("mul %d\n", imm);
-                handle_arithmetic(OP_MUL, imm);
+                handle_arithmetic(op, imm);
                 break;
 
             case OP_LOAD:
@@ -161,23 +213,11 @@ run (std::vector<Instruction> program)
                 break;
 
             case OP_J:
-                if (DEBUG) printf("j %d\n", imm);
-                break;
-
             case OP_JEZ:
-                if (DEBUG) printf("jez %d\n", imm);
-                break;
-
             case OP_JNZ:
-                if (DEBUG) printf("jnz %d\n", imm);
-                break;
-
             case OP_JGZ:
-                if (DEBUG) printf("jgz %d\n", imm);
-                break;
-
             case OP_JLZ:
-                if (DEBUG) printf("jlz %d\n", imm);
+                pc = handle_jmp(pc, op, imm);
                 break;
 
             default:
@@ -186,6 +226,7 @@ run (std::vector<Instruction> program)
         }
     }
 
+exit:
     return stack_pop();
 }
 
