@@ -146,6 +146,10 @@ protected:
 
 class BranchNode : public Node {
 public:
+    BranchNode (Node *cond, Node *trueb)
+        : Node("branch"), cond(cond), trueb(trueb), falseb(NULL)
+    { }
+
     BranchNode (Node *cond, Node *trueb, Node *falseb)
         : Node("branch"), cond(cond), trueb(trueb), falseb(falseb)
     { }
@@ -153,10 +157,30 @@ public:
     void
     code (std::vector<Instruction> &prog)
     {
+        int cond_patch, true_patch;
+
+        /* generate the IR for the conditional */
         cond->gen_code(prog);
-        prog.push_back(create_instruction(OP_JCMP, 0));
+        /* branch on the negation here to let 'true' statements fall through */
+        prog.push_back(0);
+        cond_patch = prog.size() - 1;
+
         trueb->gen_code(prog);
-        falseb->gen_code(prog);
+
+        /* if there's a false branch, we need jump to avoid it in true branch */
+        if (falseb) {
+            prog.push_back(0);
+            true_patch = prog.size() - 1;
+        }
+
+        /* patch the original negation jump instruction */
+        prog[cond_patch] = create_instruction(OP_JNZ, prog.size());
+
+        if (falseb) {
+            falseb->gen_code(prog);
+            /* finally, for true branch, patch where the false branch ends */
+            prog[true_patch] = create_instruction(OP_J, prog.size());
+        }
     }
 
     void
@@ -168,7 +192,9 @@ public:
         lvl++;
         cond->print(lvl);
         trueb->print(lvl);
-        falseb->print(lvl);
+        if (falseb) {
+            falseb->print(lvl);
+        }
     }
 
     Node *cond;

@@ -160,9 +160,24 @@ run (std::vector<Instruction> program)
                 handle_cmp();
                 break;
 
-            case OP_JCMP:
-                if (DEBUG) printf("jcmp\n");
-                //handle_jcmp();
+            case OP_J:
+                if (DEBUG) printf("j %d\n", imm);
+                break;
+
+            case OP_JEZ:
+                if (DEBUG) printf("jez %d\n", imm);
+                break;
+
+            case OP_JNZ:
+                if (DEBUG) printf("jnz %d\n", imm);
+                break;
+
+            case OP_JGZ:
+                if (DEBUG) printf("jgz %d\n", imm);
+                break;
+
+            case OP_JLZ:
+                if (DEBUG) printf("jlz %d\n", imm);
                 break;
 
             default:
@@ -177,9 +192,11 @@ run (std::vector<Instruction> program)
 void
 print_bytecode (std::vector<Instruction> program)
 {
+    unsigned long i = 0;
     int imm;
 
     for (auto instruction : program) {
+        printf("%lu: ", i++);
         imm = get_imm(instruction);
 
         switch (get_opcode(instruction)) {
@@ -223,8 +240,24 @@ print_bytecode (std::vector<Instruction> program)
                 printf("cmp\n");
                 break;
 
-            case OP_JCMP:
-                printf("jcmp %d\n", imm);
+            case OP_J:
+                printf("j %d\n", imm);
+                break;
+
+            case OP_JEZ:
+                printf("jez %d\n", imm);
+                break;
+
+            case OP_JNZ:
+                printf("jnz %d\n", imm);
+                break;
+
+            case OP_JGZ:
+                printf("jgz %d\n", imm);
+                break;
+
+            case OP_JLZ:
+                printf("jlz %d\n", imm);
                 break;
 
             default:

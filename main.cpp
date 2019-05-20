@@ -53,8 +53,9 @@ main (int argc, char **argv)
     E.nodes[0]->print(0);
     std::vector<Instruction> prog;
     E.nodes[0]->gen_code(prog);
+    prog.push_back(OP_HALT);
     print_bytecode(prog);
-    //printf("%d\n", run(prog));
+    printf("%d\n", run(prog));
     
     return 0;
 }

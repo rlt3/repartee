@@ -17,7 +17,11 @@ enum InsOpcode {
     OP_LOAD = 0x7, /* get value at index and push it onto the stack */
     OP_STORE = 0x8, /* pop value off stack and load it into index */
     OP_CMP  = 0x9,  /* pop 2 values off stack, compare them and push truth */
-    OP_JCMP  = 0xa  /* pop value off stack, jump to code addr if true */
+    OP_J    = 0xa, /* set pc = to addr */
+    OP_JEZ = 0xb, /* compare popped to 0, jump to code addr if true */
+    OP_JNZ = 0xc, /* compare popped to 0, jump to code addr if false */
+    OP_JGZ = 0xd, /* compare if popped >0, jump to code addr if true */
+    OP_JLZ = 0xe, /* compare if popped <0, jump to code addr if true */
 };
 
 Instruction create_instruction (Opcode op, int32_t imm);
