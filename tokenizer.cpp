@@ -3,6 +3,12 @@
 #include <map>
 #include "tokenizer.hpp"
 
+static const std::map<std::string, enum TokenType> SymReserved = {
+    { "if", TKN_IF },
+    { "else", TKN_ELSE },
+    { "func", TKN_FUNC }
+};
+
 static const std::map<char, enum TokenType> SymTypes = {
     { '+', TKN_ADD },
     { '-', TKN_SUB },
@@ -129,8 +135,9 @@ TokenizedInput::eol ()
     return Token(lines.size() - 1, lines.back().length(), TKN_EOL, "EOL");
 }
 
+/* If a particular character when repeated twice is a token */
 bool
-has_double (int c)
+is_double (int c)
 {
     switch (c) {
         case '=':
@@ -209,7 +216,7 @@ tokenize (std::istream &input)
         }
 
         if (SymTypes.find(c) != SymTypes.end()) {
-            if (has_double(c))
+            if (is_double(c))
                 t = handle_double(c, input, line, col, SymTypes.at(c));
             else
                 t = Token(line, col, SymTypes.at(c), std::string(1, c));
@@ -219,6 +226,8 @@ tokenize (std::istream &input)
         }
         else if (isalpha(c)) {
             t = coalesce(c, input, line, col, TKN_NAME, isalpha);
+            if (SymReserved.find(t.str) != SymReserved.end())
+                t.type = SymReserved.at(t.str);
         }
         else if (isspace(c)) {
             t = coalesce(c, input, line, col, TKN_WHITE, isspace);

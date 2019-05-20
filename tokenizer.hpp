@@ -14,6 +14,10 @@ enum TokenType {
     TKN_DIV,
     TKN_MUL,
 
+    TKN_IF,
+    TKN_ELSE,
+    TKN_FUNC,
+
     TKN_EQUAL,
     TKN_DBL_EQUAL,
     TKN_PERIOD,
