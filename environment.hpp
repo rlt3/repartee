@@ -16,7 +16,11 @@ class Environment;
 class Node {
 public:
     Node ()
-        : env(NULL)
+        : env(NULL), name("root")
+    { }
+
+    Node (std::string name)
+        : env(NULL), name(name)
     { }
 
     virtual ~Node()
@@ -66,24 +70,19 @@ public:
     }
 
     /* debugging functions which help see how the tree has been parsed */
-    void
+    virtual void
     print (int lvl)
     {
         for (int i = 0; i < lvl * 2; i++)
             putchar(' ');
-        puts(name().c_str());
+        puts(name.c_str());
         lvl++;
         for (auto C : children)
             C->print(lvl);
     }
 
-    virtual std::string
-    name ()
-    {
-        return "root";
-    }
-
     Environment *env;
+    std::string name;
     std::vector<Node*> children;
 };
 
@@ -148,19 +147,28 @@ protected:
 class BranchNode : public Node {
 public:
     BranchNode (Node *cond, Node *trueb, Node *falseb)
-        : Node(), cond(cond), trueb(trueb), falseb(falseb)
+        : Node("branch"), cond(cond), trueb(trueb), falseb(falseb)
     { }
 
     void
     code (std::vector<Instruction> &prog)
     {
-        /* branch code */
+        cond->gen_code(prog);
+        prog.push_back(create_instruction(OP_JCMP, 0));
+        trueb->gen_code(prog);
+        falseb->gen_code(prog);
     }
 
-    std::string
-    name ()
+    void
+    print (int lvl)
     {
-        return "branch";
+        for (int i = 0; i < lvl * 2; i++)
+            putchar(' ');
+        puts(name.c_str());
+        lvl++;
+        cond->print(lvl);
+        trueb->print(lvl);
+        falseb->print(lvl);
     }
 
     Node *cond;
@@ -171,7 +179,7 @@ public:
 class AssignmentNode : public Node {
 public:
     AssignmentNode (int var_id)
-        : Node(), var_id(var_id)
+        : Node("="), var_id(var_id)
     { }
 
     void
@@ -180,19 +188,13 @@ public:
         prog.push_back(create_instruction(OP_STORE, var_id));
     }
 
-    std::string
-    name ()
-    {
-        return "=";
-    }
-
     int var_id;
 };
 
 class VarNode : public Node {
 public:
     VarNode (int var_id)
-        : Node(), var_id(var_id)
+        : Node("var#" + std::to_string(var_id)), var_id(var_id)
     { }
 
     void
@@ -201,31 +203,19 @@ public:
         prog.push_back(create_instruction(OP_LOAD, var_id));
     }
 
-    std::string
-    name ()
-    {
-        return "var#" + std::to_string(var_id);
-    }
-
     int var_id;
 };
 
 class AtomNode : public Node {
 public:
     AtomNode (int value)
-        : Node(), value(value)
+        : Node(std::to_string(value)), value(value)
     { }
 
     void
     code (std::vector<Instruction> &prog)
     {
         prog.push_back(create_instruction(OP_PUSH, value));
-    }
-
-    std::string
-    name ()
-    {
-        return std::to_string(value);
     }
 
     int value;
@@ -235,7 +225,15 @@ class OperatorNode : public Node {
 public:
     OperatorNode (int type)
         : Node(), type(type)
-    { }
+    {
+        switch (type) {
+            case TKN_ADD: name = "+"; break;
+            case TKN_SUB: name = "-"; break;
+            case TKN_MUL: name = "*"; break;
+            case TKN_DIV: name = "/"; break;
+            case TKN_DBL_EQUAL: name = "=="; break;
+        }
+    }
 
     void
     code (std::vector<Instruction> &prog)
@@ -257,19 +255,6 @@ public:
                 prog.push_back(create_instruction(OP_CMP, 0));
                 break;
         }
-    }
-
-    std::string
-    name ()
-    {
-        switch (type) {
-            case TKN_ADD: return "+";
-            case TKN_SUB: return "-";
-            case TKN_MUL: return "*";
-            case TKN_DIV: return "/";
-            case TKN_DBL_EQUAL: return "==";
-        }
-        return "";
     }
 
     int type;

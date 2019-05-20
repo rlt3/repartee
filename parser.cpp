@@ -185,17 +185,32 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         comp(T, E, assign);
     }
     else if (T.peek().type == TKN_IF) {
+        Node *cond = E.node(Node("cond"));
+        Node *trueb = E.node(Node("true"));
+        Node *falseb = E.node(Node("false"));
+
         T.expect(TKN_IF);
         T.expect(TKN_LEFT_PAREN);
-        comp(T, E, N);
+        comp(T, E, cond);
         T.expect(TKN_RIGHT_PAREN);
-        T.expect(TKN_LEFT_BRACE);
 
+        T.expect(TKN_LEFT_BRACE);
         while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
-            expr(T, E, N);
+            expr(T, E, trueb);
             T.expect(TKN_SEMICOLON);
         }
         T.expect(TKN_RIGHT_BRACE);
+
+        T.expect(TKN_ELSE);
+        T.expect(TKN_LEFT_BRACE);
+        while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
+            expr(T, E, falseb);
+            T.expect(TKN_SEMICOLON);
+        }
+        T.expect(TKN_RIGHT_BRACE);
+
+        Node *branch = E.node(BranchNode(cond, trueb, falseb));
+        N->add_child(branch);
     }
     else {
         comp(T, E, N);
