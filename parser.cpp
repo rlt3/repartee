@@ -47,6 +47,7 @@ error_func (int error_type, Token t, int data)
 }
 
 void comp (TokenizedInput &T, Environment &E, Node *N);
+void expr (TokenizedInput &T, Environment &E, Node *N);
 
 /* <atom> = number | name */
 void
@@ -182,6 +183,19 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         Node *assign = E.node(AssignmentNode(var_id));
         N->add_child(assign);
         comp(T, E, assign);
+    }
+    else if (T.peek().type == TKN_IF) {
+        T.expect(TKN_IF);
+        T.expect(TKN_LEFT_PAREN);
+        comp(T, E, N);
+        T.expect(TKN_RIGHT_PAREN);
+        T.expect(TKN_LEFT_BRACE);
+
+        while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
+            expr(T, E, N);
+            T.expect(TKN_SEMICOLON);
+        }
+        T.expect(TKN_RIGHT_BRACE);
     }
     else {
         comp(T, E, N);

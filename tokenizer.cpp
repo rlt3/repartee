@@ -20,7 +20,9 @@ static const std::map<char, enum TokenType> SymTypes = {
     { '(', TKN_LEFT_PAREN },
     { ')', TKN_RIGHT_PAREN },
     { '[', TKN_LEFT_BRACKET },
-    { ']', TKN_RIGHT_BRACKET }
+    { ']', TKN_RIGHT_BRACKET },
+    { '{', TKN_LEFT_BRACE },
+    { '}', TKN_RIGHT_BRACE }
 };
 
 Token::Token ()
@@ -258,7 +260,9 @@ tokentype_to_str (int type)
         case TKN_SUB:   return "-";
         case TKN_DIV:   return "/";
         case TKN_MUL:   return "*";
-        case TKN_EQUAL: return "=";
+        case TKN_IF: return "if";
+        case TKN_ELSE: return "else";
+        case TKN_FUNC: return "func";
         case TKN_DBL_EQUAL: return "==";
         case TKN_PERIOD: return ".";
         case TKN_SEMICOLON: return ";";
@@ -266,6 +270,8 @@ tokentype_to_str (int type)
         case TKN_RIGHT_PAREN: return ")";
         case TKN_LEFT_BRACKET: return "[";
         case TKN_RIGHT_BRACKET: return "]";
+        case TKN_LEFT_BRACE: return "{";
+        case TKN_RIGHT_BRACE: return "}";
         case TKN_NUMBER: return "number";
         case TKN_NAME: return "name";
         case TKN_EOL: return "EOL";
