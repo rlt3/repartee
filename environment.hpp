@@ -145,6 +145,29 @@ protected:
             AST Node Classes
  ******************************************/
 
+class BranchNode : public Node {
+public:
+    BranchNode (Node *cond, Node *trueb, Node *falseb)
+        : Node(), cond(cond), trueb(trueb), falseb(falseb)
+    { }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+        /* branch code */
+    }
+
+    std::string
+    name ()
+    {
+        return "branch";
+    }
+
+    Node *cond;
+    Node *trueb;
+    Node *falseb;
+};
+
 class AssignmentNode : public Node {
 public:
     AssignmentNode (int var_id)
