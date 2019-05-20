@@ -16,9 +16,12 @@ enum InsOpcode {
     OP_MUL  = 0x6, /* pop n values off stack, multiply them, and push result */
     OP_LOAD = 0x7, /* get value at index and push it onto the stack */
     OP_STORE = 0x8, /* pop value off stack and load it into index */
-    OP_CMP  = 0x9  /* pop 2 values off stack, compare them and push truth */
+    OP_CMP  = 0x9,  /* pop 2 values off stack, compare them and push truth */
+    OP_JCMP  = 0xa  /* compare 2 popped values, jump to stack addr if true */
 };
 
 Instruction create_instruction (Opcode op, int32_t imm);
 
 int run (std::vector<Instruction> program);
+
+void print_bytecode (std::vector<Instruction> program);

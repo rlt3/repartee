@@ -160,6 +160,11 @@ run (std::vector<Instruction> program)
                 handle_cmp();
                 break;
 
+            case OP_JCMP:
+                if (DEBUG) printf("jcmp\n");
+                //handle_jcmp();
+                break;
+
             default:
                 machine_error("bad instruction. halting\n");
                 return 0;
@@ -167,4 +172,64 @@ run (std::vector<Instruction> program)
     }
 
     return stack_pop();
+}
+
+void
+print_bytecode (std::vector<Instruction> program)
+{
+    int imm;
+
+    for (auto instruction : program) {
+        imm = get_imm(instruction);
+
+        switch (get_opcode(instruction)) {
+            case OP_HALT:
+                printf("halt %d\n", imm);
+                return;
+
+            case OP_PUSH:
+                printf("push %d\n", imm);
+                break;
+
+            case OP_POP:
+                printf("pop %d\n", imm);
+                break;
+
+            case OP_ADD:
+                printf("add %d\n", imm);
+                break;
+
+            case OP_SUB:
+                printf("sub %d\n", imm);
+                break;
+
+            case OP_DIV:
+                printf("div %d\n", imm);
+                break;
+
+            case OP_MUL:
+                printf("mul %d\n", imm);
+                break;
+
+            case OP_LOAD:
+                printf("load %d\n", imm);
+                break;
+
+            case OP_STORE:
+                printf("store %d\n", imm);
+                break;
+
+            case OP_CMP:
+                printf("cmp\n");
+                break;
+
+            case OP_JCMP:
+                printf("jcmp %d\n", imm);
+                break;
+
+            default:
+                machine_error("bad instruction. halting\n");
+                return;
+        }
+    }
 }
