@@ -183,6 +183,7 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         Node *assign = E.node(AssignmentNode(var_id));
         N->add_child(assign);
         comp(T, E, assign);
+        T.expect(TKN_SEMICOLON);
     }
     else if (T.peek().type == TKN_IF) {
         Node *cond = E.node(Node("cond"));
@@ -198,7 +199,6 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         T.expect(TKN_LEFT_BRACE);
         while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
             expr(T, E, trueb);
-            T.expect(TKN_SEMICOLON);
         }
         T.expect(TKN_RIGHT_BRACE);
 
@@ -208,7 +208,6 @@ expr (TokenizedInput &T, Environment &E, Node *N)
             T.expect(TKN_LEFT_BRACE);
             while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
                 expr(T, E, falseb);
-                T.expect(TKN_SEMICOLON);
             }
             T.expect(TKN_RIGHT_BRACE);
         }
@@ -218,7 +217,9 @@ expr (TokenizedInput &T, Environment &E, Node *N)
     }
     else {
         comp(T, E, N);
+        T.expect(TKN_SEMICOLON);
     }
+
 }
 
 Environment
@@ -228,10 +229,8 @@ parse (TokenizedInput &T)
     Environment E(NULL);
     Node *N = E.root();
 
-    while (!T.empty()) {
+    while (!T.empty())
         expr(T, E, N);
-        T.expect(TKN_SEMICOLON);
-    }
 
     return E;
 }

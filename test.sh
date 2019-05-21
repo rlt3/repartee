@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # Each expression produce an number equal to its position in the array + 1
 declare -a tests=(
@@ -12,10 +12,10 @@ declare -a tests=(
     "a = 100 - 36; b = a / 8; b;"
     "a = (1 == 1); b = 4; ((a + b) * 2) - 1;"
     "a = 4 + (10 / (2 + 8)) == 5 * (4 + 5) / 9; a * 10;"
-    "if (1) { foo = 1; 11; } else { bar = 2; 12; };"
-    "if (0) { foo = 1; 11; } else { bar = 2; 12; };"
-    "if (1) { if (1) { 13; } else { 14; }; };"
-    "if (1) { if (0) { 13; } else { 14; }; };"
+    "if (1) { foo = 1; 11; } else { bar = 2; 12; }"
+    "if (0) { foo = 1; 11; } else { bar = 2; 12; }"
+    "if (1) { if (1) { 13; } else { 14; } }"
+    "if (1) { if (0) { 13; } else { 14; } }"
 )
 
 len=${#tests[@]}
