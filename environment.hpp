@@ -144,14 +144,10 @@ protected:
             AST Node Classes
  ******************************************/
 
-class BranchNode : public Node {
+class CondBranchNode : public Node {
 public:
-    BranchNode (Node *cond, Node *trueb)
-        : Node("branch"), cond(cond), trueb(trueb), falseb(NULL)
-    { }
-
-    BranchNode (Node *cond, Node *trueb, Node *falseb)
-        : Node("branch"), cond(cond), trueb(trueb), falseb(falseb)
+    CondBranchNode (Node *cond, Node *trueb, Node *falseb)
+        : Node("conditional branch"), cond(cond), trueb(trueb), falseb(falseb)
     { }
 
     void
@@ -200,6 +196,25 @@ public:
     Node *cond;
     Node *trueb;
     Node *falseb;
+};
+
+class ShortCircuitNode : public Node {
+    ShortCircuitNode ()
+        : Node("short circuit conditions")
+    { }
+
+    /* add a new condition to the short circuiting list of conditionals */
+    void
+    add_condition (Node *n)
+    {
+    }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+    }
+
+    std::vector<Node*> conditions;
 };
 
 class AssignmentNode : public Node {

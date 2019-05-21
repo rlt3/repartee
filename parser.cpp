@@ -189,7 +189,6 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         Node *cond = E.node(Node("cond"));
         Node *trueb = E.node(Node("true"));
         Node *falseb = NULL;
-            E.node(Node("false"));
 
         T.expect(TKN_IF);
         T.expect(TKN_LEFT_PAREN);
@@ -212,7 +211,7 @@ expr (TokenizedInput &T, Environment &E, Node *N)
             T.expect(TKN_RIGHT_BRACE);
         }
 
-        Node *branch = E.node(BranchNode(cond, trueb, falseb));
+        Node *branch = E.node(CondBranchNode(cond, trueb, falseb));
         N->add_child(branch);
     }
     else {
