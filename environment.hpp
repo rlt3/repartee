@@ -3,6 +3,9 @@
 #include <cstdlib>
 #include <cstdio>
 #include <vector>
+#include <deque>
+#include <tuple>
+#include <map>
 #include <unordered_map>
 #include "tokenizer.hpp"
 #include "machine.hpp"
@@ -84,6 +87,7 @@ public:
     Environment *env;
     std::string name;
     std::vector<Node*> children;
+    /* should be true when a node produces code but doesn't have children */
 };
 
 /*
@@ -157,6 +161,7 @@ public:
 
         /* generate the IR for the conditional */
         cond->gen_code(prog);
+
         /* branch on the negation here to let 'true' statements fall through */
         prog.push_back(0);
         cond_patch = prog.size() - 1;
@@ -198,23 +203,44 @@ public:
     Node *falseb;
 };
 
-class ShortCircuitNode : public Node {
-    ShortCircuitNode ()
-        : Node("short circuit conditions")
+class BackpatchRecord {
+    BackpatchRecord ()
     { }
+};
 
-    /* add a new condition to the short circuiting list of conditionals */
-    void
-    add_condition (Node *n)
-    {
-    }
+class ShortCircuitNode : public Node {
+public:
+    ShortCircuitNode (int type, std::deque<Node*> conditions)
+        : Node("short circuit conditions"), conditions(conditions)
+    { }
 
     void
     code (std::vector<Instruction> &prog)
     {
+        Node *n;
+        while (!conditions.empty()) {
+            n = conditions.front();
+            conditions.pop_front();
+            n->gen_code(prog);
+
+            if (conditions.empty())
+                break;
+        }
     }
 
-    std::vector<Node*> conditions;
+    void
+    print (int lvl)
+    {
+        for (int i = 0; i < lvl * 2; i++)
+            putchar(' ');
+        puts(name.c_str());
+        lvl++;
+        for (auto cond : conditions)
+            cond->print(lvl);
+    }
+
+    int type;
+    std::deque<Node*> conditions;
 };
 
 class AssignmentNode : public Node {
