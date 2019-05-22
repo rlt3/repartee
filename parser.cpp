@@ -229,6 +229,45 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         T.expect(TKN_SEMICOLON);
     }
     else if (T.peek().type == TKN_IF) {
+        /*
+         * TODO:
+         * Redo the way if-else is parsed. Right now I rely too heavily on
+         * the 'CondBranchNode' which has become a Mother Node which has too
+         * much custom stuff happening.
+         *
+         * Instead of relying on CondBranchNode to insert the conditional
+         * jumps in the correct places, create a new Node type called JmpNode
+         * which is a backpatch record generator.
+         *
+         * At each if-else parse a new child Environment will be created and
+         * each Environment is capable of handling a single backpatching record
+         * (a single true/false branch regardless of how many conditional jumps
+         * there may be). The JmpNodes will put in the correct places in the
+         * tree so that the regular DFS `gen_code' can produce code without
+         * 'CondBranchNode' having to hijack it by having 0 children. When
+         * JmpNodes are encountered they produce a backpatch record in the
+         * environment.
+         *
+         * A seperate Node called PatchNodes produce the locations for the jmp
+         * nodes (resolve particular branches). These patch the backpatch
+         * records over the course of code generation until the final node, *
+         * the parent IfNode, calls the method for producing code for the
+         * records.
+         *
+         * if (a or b) { 5; } else { 10; }
+         *
+         *                  IfNode
+         *           /   /    |   \   \    \
+         *          or  jmp Patch  5 Patch 10
+         *       / / \ \
+         *      a jmp b jmp
+         *
+         * Children of 'or' have jmp nodes that need the location of the true
+         * branch which is patched by the first patch node. The third jmp node
+         * needs the location of the false branch which is patched by the
+         * second patch.
+         */
+
         Node *cond = E.node(Node("cond"));
         Node *trueb = E.node(Node("true"));
         Node *falseb = NULL;
