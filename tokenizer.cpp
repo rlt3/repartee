@@ -6,6 +6,8 @@
 static const std::map<std::string, enum TokenType> SymReserved = {
     { "if", TKN_IF },
     { "else", TKN_ELSE },
+    { "and", TKN_LOGICAL_AND },
+    { "or", TKN_LOGICAL_OR },
     { "func", TKN_FUNC }
 };
 
@@ -15,6 +17,8 @@ static const std::map<char, enum TokenType> SymTypes = {
     { '/', TKN_DIV },
     { '*', TKN_MUL },
     { '=', TKN_EQUAL },
+    { '&', TKN_BITWISE_AND },
+    { '|', TKN_BITWISE_OR },
     { '.', TKN_PERIOD },
     { ';', TKN_SEMICOLON },
     { '(', TKN_LEFT_PAREN },
@@ -143,8 +147,8 @@ is_double (int c)
 {
     switch (c) {
         case '=':
-        //case '&':
-        //case '|':
+        case '&':
+        case '|':
             return true;
     }
     return false;
@@ -159,8 +163,8 @@ handle_double (char c, std::istream &input, int line, int &col,
         col++;
         switch (c) {
             case '=': return Token(line, col, TKN_DBL_EQUAL, "==");
-            //case '&':
-            //case '|':
+            case '&': return Token(line, col, TKN_LOGICAL_AND, "&&");
+            case '|': return Token(line, col, TKN_LOGICAL_OR, "||");
         }
     }
     input.putback(n);
@@ -263,7 +267,12 @@ tokentype_to_str (int type)
         case TKN_IF: return "if";
         case TKN_ELSE: return "else";
         case TKN_FUNC: return "func";
+        case TKN_EQUAL: return "=";
         case TKN_DBL_EQUAL: return "==";
+        case TKN_BITWISE_AND: return "&";
+        case TKN_BITWISE_OR: return "|";
+        case TKN_LOGICAL_AND: return "&&";
+        case TKN_LOGICAL_OR: return "||";
         case TKN_PERIOD: return ".";
         case TKN_SEMICOLON: return ";";
         case TKN_LEFT_PAREN: return "(";

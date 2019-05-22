@@ -171,7 +171,32 @@ comp (TokenizedInput &T, Environment &E, Node *N)
     }
 }
 
-/* <expr> := <name> = <comp> | <comp> */
+/* <cond_and> := <comp> && <cond_and> | <comp> */
+void
+cond_and (TokenizedInput &T, Environment &E, Node *N)
+{
+    comp(T, E, N);
+
+    //if (T.peek().type == TKN_LOGICAL_AND) {
+    //}
+}
+
+/* <cond_or> := <cond_and> || <cond_or> | <cond_and> */
+void
+cond_or (TokenizedInput &T, Environment &E, Node *N)
+{
+    cond_and(T, E, N);
+
+    //if (T.peek().type == TKN_LOGICAL_OR) {
+    //}
+}
+
+/* 
+ * <expr> := <name> = <comp>
+ *         | if (<cond_or>) { <expr>+ }
+ *         | if (<cond_or>) { <expr>+ } else { <expr>+ }
+ *         | <comp>
+ */
 void
 expr (TokenizedInput &T, Environment &E, Node *N)
 {
@@ -192,7 +217,7 @@ expr (TokenizedInput &T, Environment &E, Node *N)
 
         T.expect(TKN_IF);
         T.expect(TKN_LEFT_PAREN);
-        comp(T, E, cond);
+        cond_or(T, E, cond);
         T.expect(TKN_RIGHT_PAREN);
 
         T.expect(TKN_LEFT_BRACE);
