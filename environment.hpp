@@ -99,29 +99,36 @@ public:
 class Environment {
 public:
     Environment (Environment *parent)
-        : parent(parent), lbl_true(-1), lbl_false(-1)
+        : parent(parent)
     { }
 
     ~Environment ()
     {
         for (auto N : nodes)
             delete N;
+
+        for (auto e : children)
+            delete e;
     }
 
     void
-    generate_backpatch (std::vector<Instruction> &prog, Opcode op, bool branch)
+    generate_backpatch (std::vector<Instruction> &prog,
+            std::string lbl, Opcode op)
     {
+        if (labels.find(lbl) != labels.end()) {
+            fprintf(stderr, "Label %s already exists in this env\n", lbl.c_str());
+            exit(1);
+        }
         prog.push_back(OP_HALT);
-        backpatches.push_back(std::make_tuple(prog.size() - 1, op, branch));
+        labels[lbl] = -1;
+        auto idx = prog.size() - 1;
+        backpatches.push_back(std::make_tuple(idx, op, lbl));
     }
 
     void
-    patch_backpatch (std::vector<Instruction> &prog, bool branch)
+    patch_backpatch (std::vector<Instruction> &prog, std::string lbl)
     {
-        if (branch)
-            lbl_true = prog.size();
-        else
-            lbl_false = prog.size();
+        labels[lbl] = prog.size();
     }
 
     void
@@ -130,7 +137,7 @@ public:
         for (auto b : backpatches) {
             int idx = std::get<0>(b);
             Opcode op = std::get<1>(b);
-            int label = std::get<2>(b) ? lbl_true : lbl_false;
+            int label = labels[std::get<2>(b)];
             prog[idx] = create_instruction(op, label);
         }
         backpatches.clear();
@@ -165,97 +172,64 @@ public:
         return n;
     }
 
+    /* The 'allocator' for sub-envs */
+    Environment *
+    child ()
+    {
+        Environment *e = new Environment(this);
+        children.push_back(e);
+        return e;
+    }
+
     std::vector<Node*> nodes;
+    std::vector<Environment*> children;
 
 protected:
     Environment *parent;
-    int lbl_true;
-    int lbl_false;
     std::unordered_map<std::string, Node*> symbols;
-    std::vector<std::tuple<int, Opcode, bool>> backpatches;
+    std::unordered_map<std::string, int> labels;
+    std::vector<std::tuple<unsigned long, Opcode, std::string>> backpatches;
 };
 
 /******************************************
             AST Node Classes
  ******************************************/
 
+/* Write out the instructions for all resolved labels/addresses */
 class CondBranchNode : public Node {
 public:
-    CondBranchNode (Node *cond, Node *trueb, Node *falseb)
-        : Node("conditional branch"), cond(cond), trueb(trueb), falseb(falseb)
+    CondBranchNode ()
+        : Node("conditional branch")
     { }
 
     void
     code (std::vector<Instruction> &prog)
     {
         env->write_backpatches(prog);
-
-        //int cond_patch, true_patch;
-
-        ///* generate the IR for the conditional */
-        //cond->gen_code(prog);
-
-        ///* branch on the negation here to let 'true' statements fall through */
-        //prog.push_back(0);
-        //cond_patch = prog.size() - 1;
-
-        //trueb->gen_code(prog);
-
-        ///* if there's a false branch, we need jump to avoid it in true branch */
-        //if (falseb) {
-        //    prog.push_back(0);
-        //    true_patch = prog.size() - 1;
-        //}
-
-        ///* patch the original negation jump instruction */
-        //prog[cond_patch] = create_instruction(OP_JEZ, prog.size());
-
-        //if (falseb) {
-        //    falseb->gen_code(prog);
-        //    /* finally, for true branch, patch where the false branch ends */
-        //    prog[true_patch] = create_instruction(OP_J, prog.size());
-        //}
     }
-
-    void
-    print (int lvl)
-    {
-        for (int i = 0; i < lvl * 2; i++)
-            putchar(' ');
-        puts(name.c_str());
-        lvl++;
-        cond->print(lvl);
-        trueb->print(lvl);
-        if (falseb) {
-            falseb->print(lvl);
-        }
-    }
-
-    Node *cond;
-    Node *trueb;
-    Node *falseb;
 };
 
-class ShortCircuitPatchNode : public Node {
+/* Resolve the address of a particular label */
+class LabelNode : public Node {
 public:
-    ShortCircuitPatchNode (bool branch)
-        : Node("short circuit"), branch(branch)
+    LabelNode (std::string label)
+        : Node("label " + label), label(label)
     { }
 
     void
     code (std::vector<Instruction> &prog)
     {
-        env->patch_backpatch(prog, branch);
+        env->patch_backpatch(prog, label);
     }
     
-    bool branch;
+    std::string label;
 };
 
-/* Fills the role of a backpatch generator */
-class ShortCircuitGenNode : public Node {
+/* Generate a short circuit branch to given true and false labels */
+class ShortCircuitNode : public Node {
 public:
-    ShortCircuitGenNode (int type)
-        : Node("short circuit")
+    ShortCircuitNode (int type, std::string tlbl, std::string flbl)
+        : Node("short circuit"), type(type), true_label(tlbl), false_label(flbl)
     { }
 
     void
@@ -263,18 +237,36 @@ public:
     {
         switch (type) {
             case TKN_LOGICAL_OR:
-                this->env->generate_backpatch(prog, OP_JNZ, true);
+                env->generate_backpatch(prog, true_label, OP_JNZ);
                 break;
             case TKN_LOGICAL_AND:
-                this->env->generate_backpatch(prog, OP_JEZ, false);
+                env->generate_backpatch(prog, false_label, OP_JEZ);
                 break;
             default:
-                fprintf(stderr, "Type error\n");
+                fprintf(stderr, "Type error (%d) %s\n", type, tokentype_to_str(type).c_str());
                 exit(1);
         }
     }
     
     int type;
+    std::string true_label;
+    std::string false_label;
+};
+
+/* An unconditional jump to some label to-be-resolved */
+class JmpNode : public Node {
+public:
+    JmpNode (std::string label)
+        : Node("j " + label), label(label)
+    { }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+        env->generate_backpatch(prog, label, OP_J);
+    }
+
+    std::string label;
 };
 
 class AssignmentNode : public Node {
