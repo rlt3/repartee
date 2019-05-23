@@ -138,6 +138,10 @@ public:
             int idx = std::get<0>(b);
             Opcode op = std::get<1>(b);
             int label = labels[std::get<2>(b)];
+            if (label < 0) {
+                fprintf(stderr, "Label %s was never resolved\n", std::get<2>(b).c_str());
+                exit(1);
+            }
             prog[idx] = create_instruction(op, label);
         }
         backpatches.clear();
