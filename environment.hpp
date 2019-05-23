@@ -99,13 +99,41 @@ public:
 class Environment {
 public:
     Environment (Environment *parent)
-        : parent(parent)
+        : parent(parent), lbl_true(-1), lbl_false(-1)
     { }
 
     ~Environment ()
     {
         for (auto N : nodes)
             delete N;
+    }
+
+    void
+    generate_backpatch (std::vector<Instruction> &prog, Opcode op, bool branch)
+    {
+        prog.push_back(OP_HALT);
+        backpatches.push_back(std::make_tuple(prog.size() - 1, op, branch));
+    }
+
+    void
+    patch_backpatch (std::vector<Instruction> &prog, bool branch)
+    {
+        if (branch)
+            lbl_true = prog.size();
+        else
+            lbl_false = prog.size();
+    }
+
+    void
+    write_backpatches (std::vector<Instruction> &prog)
+    {
+        for (auto b : backpatches) {
+            int idx = std::get<0>(b);
+            Opcode op = std::get<1>(b);
+            int label = std::get<2>(b) ? lbl_true : lbl_false;
+            prog[idx] = create_instruction(op, label);
+        }
+        backpatches.clear();
     }
 
     /* register a symbol in the environment */
@@ -141,7 +169,10 @@ public:
 
 protected:
     Environment *parent;
+    int lbl_true;
+    int lbl_false;
     std::unordered_map<std::string, Node*> symbols;
+    std::vector<std::tuple<int, Opcode, bool>> backpatches;
 };
 
 /******************************************
@@ -157,31 +188,33 @@ public:
     void
     code (std::vector<Instruction> &prog)
     {
-        int cond_patch, true_patch;
+        env->write_backpatches(prog);
 
-        /* generate the IR for the conditional */
-        cond->gen_code(prog);
+        //int cond_patch, true_patch;
 
-        /* branch on the negation here to let 'true' statements fall through */
-        prog.push_back(0);
-        cond_patch = prog.size() - 1;
+        ///* generate the IR for the conditional */
+        //cond->gen_code(prog);
 
-        trueb->gen_code(prog);
+        ///* branch on the negation here to let 'true' statements fall through */
+        //prog.push_back(0);
+        //cond_patch = prog.size() - 1;
 
-        /* if there's a false branch, we need jump to avoid it in true branch */
-        if (falseb) {
-            prog.push_back(0);
-            true_patch = prog.size() - 1;
-        }
+        //trueb->gen_code(prog);
 
-        /* patch the original negation jump instruction */
-        prog[cond_patch] = create_instruction(OP_JEZ, prog.size());
+        ///* if there's a false branch, we need jump to avoid it in true branch */
+        //if (falseb) {
+        //    prog.push_back(0);
+        //    true_patch = prog.size() - 1;
+        //}
 
-        if (falseb) {
-            falseb->gen_code(prog);
-            /* finally, for true branch, patch where the false branch ends */
-            prog[true_patch] = create_instruction(OP_J, prog.size());
-        }
+        ///* patch the original negation jump instruction */
+        //prog[cond_patch] = create_instruction(OP_JEZ, prog.size());
+
+        //if (falseb) {
+        //    falseb->gen_code(prog);
+        //    /* finally, for true branch, patch where the false branch ends */
+        //    prog[true_patch] = create_instruction(OP_J, prog.size());
+        //}
     }
 
     void
@@ -203,44 +236,45 @@ public:
     Node *falseb;
 };
 
-class BackpatchRecord {
-    BackpatchRecord ()
-    { }
-};
-
-class ShortCircuitNode : public Node {
+class ShortCircuitPatchNode : public Node {
 public:
-    ShortCircuitNode (int type, std::deque<Node*> conditions)
-        : Node("short circuit conditions"), conditions(conditions)
+    ShortCircuitPatchNode (bool branch)
+        : Node("short circuit"), branch(branch)
     { }
 
     void
     code (std::vector<Instruction> &prog)
     {
-        Node *n;
-        while (!conditions.empty()) {
-            n = conditions.front();
-            conditions.pop_front();
-            n->gen_code(prog);
-
-            if (conditions.empty())
-                break;
-        }
+        env->patch_backpatch(prog, branch);
     }
+    
+    bool branch;
+};
+
+/* Fills the role of a backpatch generator */
+class ShortCircuitGenNode : public Node {
+public:
+    ShortCircuitGenNode (int type)
+        : Node("short circuit")
+    { }
 
     void
-    print (int lvl)
+    code (std::vector<Instruction> &prog)
     {
-        for (int i = 0; i < lvl * 2; i++)
-            putchar(' ');
-        puts(name.c_str());
-        lvl++;
-        for (auto cond : conditions)
-            cond->print(lvl);
+        switch (type) {
+            case TKN_LOGICAL_OR:
+                this->env->generate_backpatch(prog, OP_JNZ, true);
+                break;
+            case TKN_LOGICAL_AND:
+                this->env->generate_backpatch(prog, OP_JEZ, false);
+                break;
+            default:
+                fprintf(stderr, "Type error\n");
+                exit(1);
+        }
     }
-
+    
     int type;
-    std::deque<Node*> conditions;
 };
 
 class AssignmentNode : public Node {

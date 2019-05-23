@@ -188,25 +188,25 @@ cond_or (TokenizedInput &T, Environment &E, Node *N)
     Node tmp;
     cond_and(T, E, &tmp);
 
-    if (T.peek().type == TKN_LOGICAL_OR) {
-        std::deque<Node*> conditions;
-        Node *n;
+    //if (T.peek().type == TKN_LOGICAL_OR) {
+    //    std::deque<Node*> conditions;
+    //    Node *n;
 
-        n = E.node(Node("cond"));;
-        n->merge(&tmp);
-        conditions.push_back(n);
+    //    n = E.node(Node("cond"));;
+    //    n->merge(&tmp);
+    //    conditions.push_back(n);
 
-        while (T.peek().type == TKN_LOGICAL_OR) {
-            T.next();
-            n = E.node(Node("cond"));;
-            cond_and(T, E, n);
-            conditions.push_back(n);
-        }
+    //    while (T.peek().type == TKN_LOGICAL_OR) {
+    //        T.next();
+    //        n = E.node(Node("cond"));;
+    //        cond_and(T, E, n);
+    //        conditions.push_back(n);
+    //    }
 
-        N->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_OR, conditions)));
-    } else {
+    //    N->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_OR, conditions)));
+    //} else {
         N->merge(&tmp);
-    }
+    //}
 }
 
 /* 
