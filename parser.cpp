@@ -177,36 +177,28 @@ cond_and (TokenizedInput &T, Environment &E, Node *N)
 {
     comp(T, E, N);
 
-    //if (T.peek().type == TKN_LOGICAL_AND) {
-    //}
+    if (T.peek().type == TKN_LOGICAL_AND) {
+        while (T.peek().type == TKN_LOGICAL_AND) {
+            T.expect(TKN_LOGICAL_AND);
+            N->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_AND, "true", "false")));
+            comp(T, E, N);
+        }
+    }
 }
 
 /* <cond_or> := <cond_and> || <cond_or> | <cond_and> */
 void
 cond_or (TokenizedInput &T, Environment &E, Node *N)
 {
-    Node tmp;
-    cond_and(T, E, &tmp);
+    cond_and(T, E, N);
 
-    //if (T.peek().type == TKN_LOGICAL_OR) {
-    //    std::deque<Node*> conditions;
-    //    Node *n;
-
-    //    n = E.node(Node("cond"));;
-    //    n->merge(&tmp);
-    //    conditions.push_back(n);
-
-    //    while (T.peek().type == TKN_LOGICAL_OR) {
-    //        T.next();
-    //        n = E.node(Node("cond"));;
-    //        cond_and(T, E, n);
-    //        conditions.push_back(n);
-    //    }
-
-    //    N->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_OR, conditions)));
-    //} else {
-        N->merge(&tmp);
-    //}
+    if (T.peek().type == TKN_LOGICAL_OR) {
+        while (T.peek().type == TKN_LOGICAL_OR) {
+            T.expect(TKN_LOGICAL_OR);
+            N->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_OR, "true", "false")));
+            cond_and(T, E, N);
+        }
+    }
 }
 
 /* 
@@ -232,7 +224,7 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         /*
          * if (a or b) { 5; } else { 10; }
          *
-         *                CondBranchNode
+         *                  IfElseNode
          *            /  /  |  |  |  \   \  \
          *          or jmp lbl 5 jmp lbl 10 lbl
          *        / | \    _|         |___   |___________
@@ -251,7 +243,7 @@ expr (TokenizedInput &T, Environment &E, Node *N)
          */
 
         Environment *e = E.child();
-        Node *C = e->node(CondBranchNode());
+        Node *C = e->node(IfElseNode());
 
         T.expect(TKN_IF);
         T.expect(TKN_LEFT_PAREN);

@@ -16,6 +16,8 @@ declare -a tests=(
     "if (0) { foo = 1; 11; } else { bar = 2; 12; }"
     "if (1) { if (1) { 13; } else { 14; } }"
     "if (1) { if (0) { 13; } else { 14; } }"
+    "if (1 or 0) { 15; } else { 16; }"
+    "if (1 and 0) { 15; } else { 16; }"
 )
 
 len=${#tests[@]}

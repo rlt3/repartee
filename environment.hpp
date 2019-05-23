@@ -115,12 +115,9 @@ public:
     generate_backpatch (std::vector<Instruction> &prog,
             std::string lbl, Opcode op)
     {
-        if (labels.find(lbl) != labels.end()) {
-            fprintf(stderr, "Label %s already exists in this env\n", lbl.c_str());
-            exit(1);
-        }
+        if (labels.find(lbl) == labels.end())
+            labels[lbl] = -1;
         prog.push_back(OP_HALT);
-        labels[lbl] = -1;
         auto idx = prog.size() - 1;
         backpatches.push_back(std::make_tuple(idx, op, lbl));
     }
@@ -200,9 +197,9 @@ protected:
  ******************************************/
 
 /* Write out the instructions for all resolved labels/addresses */
-class CondBranchNode : public Node {
+class IfElseNode : public Node {
 public:
-    CondBranchNode ()
+    IfElseNode ()
         : Node("conditional branch")
     { }
 
@@ -211,6 +208,7 @@ public:
     {
         env->write_backpatches(prog);
     }
+
 };
 
 /* Resolve the address of a particular label */
