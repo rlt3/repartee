@@ -220,6 +220,11 @@ run (std::vector<Instruction> program)
                 pc = handle_jmp(pc, op, imm);
                 break;
 
+            case OP_DUP:
+                if (DEBUG) printf("dup\n");
+                stack_push(stack[stack_index - 1]);
+                break;
+
             default:
                 machine_error("bad instruction. halting\n");
                 return 0;
@@ -299,6 +304,10 @@ print_bytecode (std::vector<Instruction> program)
 
             case OP_JLZ:
                 printf("jlz %d\n", imm);
+                break;
+
+            case OP_DUP:
+                printf("dup\n");
                 break;
 
             default:

@@ -22,6 +22,7 @@ enum InsOpcode {
     OP_JNZ = 0xc, /* compare popped to 0, jump to code addr if false */
     OP_JGZ = 0xd, /* compare if popped >0, jump to code addr if true */
     OP_JLZ = 0xe, /* compare if popped <0, jump to code addr if true */
+    OP_DUP = 0xf, /* duplicate the value on top of the stack, pushing it */
 };
 
 Instruction create_instruction (Opcode op, int32_t imm);

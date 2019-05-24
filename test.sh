@@ -18,6 +18,13 @@ declare -a tests=(
     "if (1) { if (0) { 13; } else { 14; } }"
     "if (1 or 0) { 15; } else { 16; }"
     "if (1 and 0) { 15; } else { 16; }"
+    "a=1;b=1;c=0; if (a or (b and c)) { 17; } else { 18; }"
+    "a=0;b=1;c=0; if (a or (b and c)) { 17; } else { 18; }"
+    "a=1;b=1;c=0; if (a and (b or c)) { 19; } else { 20; }"
+    "a=0;b=1;c=0; if (a and (b or c)) { 19; } else { 20; }"
+    "a=1;b=1;c=0;d=1; if (a and (b or (c and d))) { 21; } else { 22; }"
+    "a=1;b=0;c=1;d=0; if (a and (b or (c and d))) { 21; } else { 22; }"
+    "a=0;b=5;c=a or b; if (c) { 23; } else { 0; }"
 )
 
 len=${#tests[@]}

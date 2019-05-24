@@ -8,6 +8,7 @@
 #include "parser.hpp"
 #include "machine.hpp"
 #include "environment.hpp"
+#include "arg.h"
 
 void
 usage (char *prog)
@@ -41,21 +42,47 @@ tokenize_input (char *filename)
     return tokens;
 }
 
-int
-main (int argc, char **argv)
+static bool is_debug = false;
+static bool is_execute = true;
+
+void
+handle_args (int argc, char **argv)
 {
+    char *argv0; /* for ARGBEGIN macro, see arg.h */
+
     if (argc < 2)
         usage(argv[0]);
 
-    TokenizedInput tokens = tokenize_input(argv[1]);
+    ARGBEGIN {
+        /* show debug */
+        case 'd': is_debug = true; break;
+        /* no execute */
+        case 'n': is_execute = false; break;
+        case 'h': usage(argv[0]); break;
+        default: break;
+    } ARGEND
+}
+
+int
+main (int argc, char **argv)
+{
+    handle_args(argc, argv);
+
+    TokenizedInput tokens = tokenize_input(argv[argc - 1]);
     Environment E = parse(tokens);
     
-    //E.nodes[0]->print(0);
     std::vector<Instruction> prog;
     E.nodes[0]->gen_code(prog);
     prog.push_back(OP_HALT);
-    //print_bytecode(prog);
-    printf("%d\n", run(prog));
+
+    if (is_debug) {
+        E.nodes[0]->print(0);
+        print_bytecode(prog);
+    }
+
+    if (is_execute) {
+        printf("%d\n", run(prog));
+    }
     
     return 0;
 }

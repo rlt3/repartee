@@ -46,7 +46,7 @@ error_func (int error_type, Token t, int data)
     exit(1);
 }
 
-void comp (TokenizedInput &T, Environment &E, Node *N);
+void cond_or (TokenizedInput &T, Environment &E, Node *N);
 void expr (TokenizedInput &T, Environment &E, Node *N);
 
 /* <atom> = number | name */
@@ -63,13 +63,13 @@ atom (TokenizedInput &T, Environment &E, Node *N)
     }
 }
 
-/* <item> = (<comp>) | <atom> */
+/* <item> = (<cond_or>) | <atom> */
 void
 item (TokenizedInput &T, Environment &E, Node *N)
 {
     if (T.peek().type == TKN_LEFT_PAREN) {
         T.expect(TKN_LEFT_PAREN);
-        comp(T, E, N);
+        cond_or(T, E, N);
         T.expect(TKN_RIGHT_PAREN);
     }
     else {
@@ -171,41 +171,71 @@ comp (TokenizedInput &T, Environment &E, Node *N)
     }
 }
 
-/* <cond_and> := <comp> && <cond_and> | <comp> */
+/* <and> := <comp> && <and> | <comp> */
 void
 cond_and (TokenizedInput &T, Environment &E, Node *N)
 {
-    comp(T, E, N);
+    Node tmp;
+    comp(T, E, &tmp);
 
+    /* See <cond_or> */
     if (T.peek().type == TKN_LOGICAL_AND) {
+        Environment *e = E.child();
+        Node *L = e->node(LogicalNode(TKN_LOGICAL_AND, "false"));
+        L->merge(&tmp);
+        L->add_child(e->node(ShortCircuitNode(TKN_LOGICAL_AND, "false", "exit")));
+
         while (T.peek().type == TKN_LOGICAL_AND) {
             T.expect(TKN_LOGICAL_AND);
-            N->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_AND, "true", "false")));
-            comp(T, E, N);
+            comp(T, E, L);
+            L->add_child(e->node(ShortCircuitNode(TKN_LOGICAL_AND, "false", "exit")));
         }
+
+        N->add_child(L);
+    } else {
+        N->merge(&tmp);
     }
 }
 
-/* <cond_or> := <cond_and> || <cond_or> | <cond_and> */
+/* <or> := <and> || <or> | <and> */
 void
 cond_or (TokenizedInput &T, Environment &E, Node *N)
 {
-    cond_and(T, E, N);
+    Node tmp;
+    cond_and(T, E, &tmp);
 
     if (T.peek().type == TKN_LOGICAL_OR) {
+        /*
+         * Each LogicalNode has its own environment where child ShortCircuit
+         * nodes generate backpatch records for short circuiting the true and
+         * false branches of logical expressions. All logical expressions
+         * evaluate to true or false (1 or 0) and the LogicalNode resolves the
+         * short circuited branches that provide the true or false values.
+         * Because each LogicalNode is in its own environment then child
+         * LogicalNodes will not interfere with label names.
+         */
+        Environment *e = E.child();
+        Node *L = e->node(LogicalNode(TKN_LOGICAL_OR, "true"));
+        L->merge(&tmp);
+        L->add_child(e->node(ShortCircuitNode(TKN_LOGICAL_OR, "true", "exit")));
+
         while (T.peek().type == TKN_LOGICAL_OR) {
             T.expect(TKN_LOGICAL_OR);
-            N->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_OR, "true", "false")));
-            cond_and(T, E, N);
+            cond_and(T, E, L);
+            L->add_child(e->node(ShortCircuitNode(TKN_LOGICAL_OR, "true", "exit")));
         }
+
+        N->add_child(L);
+    } else {
+        N->merge(&tmp);
     }
 }
 
 /* 
- * <expr> := <name> = <comp>
+ * <expr> := <name> = <cond_or>
  *         | if (<cond_or>) { <expr>+ }
  *         | if (<cond_or>) { <expr>+ } else { <expr>+ }
- *         | <comp>
+ *         | <cond_or>
  */
 void
 expr (TokenizedInput &T, Environment &E, Node *N)
@@ -217,7 +247,7 @@ expr (TokenizedInput &T, Environment &E, Node *N)
 
         Node *assign = E.node(AssignmentNode(var_id));
         N->add_child(assign);
-        comp(T, E, assign);
+        cond_or(T, E, assign);
         T.expect(TKN_SEMICOLON);
     }
     else if (T.peek().type == TKN_IF) {
@@ -247,19 +277,16 @@ expr (TokenizedInput &T, Environment &E, Node *N)
 
         T.expect(TKN_IF);
         T.expect(TKN_LEFT_PAREN);
-        cond_or(T, *e, C);
+        cond_or(T, E, C);
         T.expect(TKN_RIGHT_PAREN);
 
-        /* TODO: should be another node type */
-        C->add_child(e->node(ShortCircuitNode(TKN_LOGICAL_AND, "true", "false")));
-        C->add_child(e->node(LabelNode("true")));
+        C->add_child(e->node(JmpZeroNode("false")));
 
         T.expect(TKN_LEFT_BRACE);
         while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
-            expr(T, *e, C);
+            expr(T, E, C);
         }
         T.expect(TKN_RIGHT_BRACE);
-
 
         if (T.peek().type == TKN_ELSE) {
             C->add_child(e->node(JmpNode("exit")));
@@ -268,7 +295,7 @@ expr (TokenizedInput &T, Environment &E, Node *N)
             T.expect(TKN_ELSE);
             T.expect(TKN_LEFT_BRACE);
             while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
-                expr(T, *e, C);
+                expr(T, E, C);
             }
             T.expect(TKN_RIGHT_BRACE);
 
@@ -280,7 +307,7 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         N->add_child(C);
     }
     else {
-        comp(T, E, N);
+        cond_or(T, E, N);
         T.expect(TKN_SEMICOLON);
     }
 

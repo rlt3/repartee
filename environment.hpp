@@ -136,12 +136,11 @@ public:
             Opcode op = std::get<1>(b);
             int label = labels[std::get<2>(b)];
             if (label < 0) {
-                fprintf(stderr, "Label %s was never resolved\n", std::get<2>(b).c_str());
+                fprintf(stderr, "Label %s (%d) was never resolved\n", std::get<2>(b).c_str(), label);
                 exit(1);
             }
             prog[idx] = create_instruction(op, label);
         }
-        backpatches.clear();
     }
 
     /* register a symbol in the environment */
@@ -227,11 +226,46 @@ public:
     std::string label;
 };
 
-/* Generate a short circuit branch to given true and false labels */
+/*
+ * Resolves the backpatch records the ShortCircuitNodes generate within the
+ * same environment. Produces the code that produces a 1 or 0 for logical
+ * expressions.
+ */
+class LogicalNode : public Node {
+public:
+    LogicalNode (int t, std::string s)
+        : Node(t == TKN_LOGICAL_OR ? "or" : "and"), type(t), short_label(s)
+    { }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+        if (type == TKN_LOGICAL_OR)
+            prog.push_back(create_instruction(OP_PUSH, 0));
+        else
+            prog.push_back(create_instruction(OP_PUSH, 1));
+
+        env->generate_backpatch(prog, "exit", OP_J);
+        env->patch_backpatch(prog, short_label);
+
+        if (type == TKN_LOGICAL_OR)
+            prog.push_back(create_instruction(OP_PUSH, 1));
+        else
+            prog.push_back(create_instruction(OP_PUSH, 0));
+
+        env->generate_backpatch(prog, "exit", OP_J);
+        env->patch_backpatch(prog, "exit");
+        env->write_backpatches(prog);
+    }
+
+    int type;
+    std::string short_label;
+};
+
 class ShortCircuitNode : public Node {
 public:
-    ShortCircuitNode (int type, std::string tlbl, std::string flbl)
-        : Node("short circuit"), type(type), true_label(tlbl), false_label(flbl)
+    ShortCircuitNode (int type, std::string s, std::string e)
+        : Node("short circuit"), type(type), short_label(s), exit_label(e)
     { }
 
     void
@@ -239,10 +273,10 @@ public:
     {
         switch (type) {
             case TKN_LOGICAL_OR:
-                env->generate_backpatch(prog, true_label, OP_JNZ);
+                env->generate_backpatch(prog, short_label, OP_JNZ);
                 break;
             case TKN_LOGICAL_AND:
-                env->generate_backpatch(prog, false_label, OP_JEZ);
+                env->generate_backpatch(prog, short_label, OP_JEZ);
                 break;
             default:
                 fprintf(stderr, "Type error (%d) %s\n", type, tokentype_to_str(type).c_str());
@@ -251,8 +285,39 @@ public:
     }
     
     int type;
-    std::string true_label;
-    std::string false_label;
+    std::string short_label;
+    std::string exit_label;
+};
+
+
+class JmpZeroNode : public Node {
+public:
+    JmpZeroNode (std::string label)
+        : Node("jez " + label), label(label)
+    { }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+        env->generate_backpatch(prog, label, OP_JEZ);
+    }
+
+    std::string label;
+};
+
+class JmpNonNull : public Node {
+public:
+    JmpNonNull (std::string label)
+        : Node("jnz " + label), label(label)
+    { }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+        env->generate_backpatch(prog, label, OP_JNZ);
+    }
+
+    std::string label;
 };
 
 /* An unconditional jump to some label to-be-resolved */
