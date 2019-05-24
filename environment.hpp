@@ -152,6 +152,27 @@ protected:
     std::vector<std::tuple<unsigned long, Opcode, std::string>> backpatches;
 };
 
+typedef enum _VarType {
+    NULLABLE,
+    INTEGER,
+    FLOAT,
+    FUNCTION
+} VarType;
+
+struct Variable {
+    Variable ()
+        : name("bad"), type(NULLABLE), is_param(false)
+    { }
+
+    Variable (std::string name, VarType type, bool is_param)
+        : name(name), type(type), is_param(is_param)
+    { }
+
+    std::string name;
+    VarType type;
+    bool is_param;
+};
+
 /*
  * Holds all the symbol definitions for a particular environment. The root
  * environment (whose parent is NULL) holds the definitions for global symbols.
@@ -175,16 +196,25 @@ public:
 
     /* register a symbol in the environment */
     void
-    reg_var (std::string sym)
+    reg_var (std::string sym, Variable v)
     {
-        syms_var[sym] = -1;
+        syms_var[sym] = v;
     }
 
-    /* register a function in the environment */
-    void
-    reg_func (std::string sym, Node *n)
+    /* Create a function in this environment, returning a child environment */
+    Environment*
+    create_func (std::string func_name)
     {
-        syms_func[sym] = n;
+        Environment *e = child();
+        syms_func[func_name] = e;
+        return e;
+    }
+
+    /* register a function environment as a function */
+    void
+    reg_func (std::string sym, Environment *e)
+    {
+        syms_func[sym] = e;
     }
 
     /* start a new backpatch scope for a particular path of code generation */
@@ -250,6 +280,8 @@ public:
         return n;
     }
 
+protected:
+
     /* The 'allocator' for sub-envs */
     Environment *
     child ()
@@ -259,15 +291,14 @@ public:
         return e;
     }
 
-    std::vector<Node*> nodes;
-
-protected:
     Environment* parent;
     Node* root_node;
-    std::unordered_map<std::string, int> syms_var;
-    std::unordered_map<std::string, Node *> syms_func;
+    
+    std::unordered_map<std::string, Variable> syms_var;
+    std::unordered_map<std::string, Environment*> syms_func;
     std::stack<BackpatchScope> backpatches;
     std::vector<Environment*> children;
+    std::vector<Node*> nodes;
 };
 
 /******************************************
