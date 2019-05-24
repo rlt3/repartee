@@ -84,8 +84,7 @@ public:
     virtual void
     code (std::vector<Instruction> &prog)
     {
-        fputs("Bad Code\n", stderr);
-        exit(1);
+        prog.push_back(OP_HALT);
     }
 
     /* debugging functions which help see how the tree has been parsed */
@@ -162,7 +161,7 @@ protected:
 class Environment {
 public:
     Environment (Environment *parent)
-        : parent(parent)
+        : parent(parent), root_node(NULL)
     { }
 
     ~Environment ()
@@ -176,16 +175,16 @@ public:
 
     /* register a symbol in the environment */
     void
-    reg_sym (std::string sym, Node *n)
+    reg_var (std::string sym)
     {
-        symbols[sym] = n;
+        syms_var[sym] = -1;
     }
 
-    /* create a new root node for an expression */
-    Node*
-    root ()
+    /* register a function in the environment */
+    void
+    reg_func (std::string sym, Node *n)
     {
-        return this->node(Node());
+        syms_func[sym] = n;
     }
 
     /* start a new backpatch scope for a particular path of code generation */
@@ -206,6 +205,34 @@ public:
     {
         assert(backpatches.size() >= 1);
         backpatches.pop();
+    }
+
+    std::vector<Instruction>
+    generate_bytecode ()
+    {
+        std::vector<Instruction> prog;
+        /* TODO: recursively write all function definitions first */
+        root()->gen_code(prog);
+        root()->code(prog);
+        return prog;
+    }
+
+    /* 
+     * Return the root Node for the entire environment tree. A tree of Nodes
+     * can have multiple environments.
+     */
+    Node*
+    root ()
+    {
+        /* at root environment */
+        if (!parent) {
+            if (root_node)
+                return root_node;
+            root_node = this->node(Node());
+            return root_node;
+        } else {
+            return parent->root();
+        }
     }
 
     /* 
@@ -235,8 +262,10 @@ public:
     std::vector<Node*> nodes;
 
 protected:
-    Environment *parent;
-    std::unordered_map<std::string, Node*> symbols;
+    Environment* parent;
+    Node* root_node;
+    std::unordered_map<std::string, int> syms_var;
+    std::unordered_map<std::string, Node *> syms_func;
     std::stack<BackpatchScope> backpatches;
     std::vector<Environment*> children;
 };

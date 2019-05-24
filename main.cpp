@@ -70,17 +70,15 @@ main (int argc, char **argv)
     TokenizedInput tokens = tokenize_input(argv[argc - 1]);
     Environment E = parse(tokens);
     
-    std::vector<Instruction> prog;
-    E.nodes[0]->gen_code(prog);
-    prog.push_back(OP_HALT);
+    std::vector<Instruction> bytecode = E.generate_bytecode();
 
     if (is_debug) {
-        E.nodes[0]->print(0);
-        print_bytecode(prog);
+        E.root()->print(0);
+        print_bytecode(bytecode);
     }
 
     if (is_execute) {
-        printf("%d\n", run(prog));
+        printf("%d\n", run(bytecode));
     }
     
     return 0;
