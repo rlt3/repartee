@@ -48,11 +48,10 @@ static bool is_execute = true;
 void
 handle_args (int argc, char **argv)
 {
-    char *argv0; /* for ARGBEGIN macro, see arg.h */
-
     if (argc < 2)
         usage(argv[0]);
 
+    /* for ARGBEGIN macro see arg.h */
     ARGBEGIN {
         /* show debug */
         case 'd': is_debug = true; break;

@@ -253,7 +253,6 @@ public:
         else
             prog.push_back(create_instruction(OP_PUSH, 0));
 
-        env->generate_backpatch(prog, "exit", OP_J);
         env->patch_backpatch(prog, "exit");
         env->write_backpatches(prog);
     }
@@ -288,7 +287,6 @@ public:
     std::string short_label;
     std::string exit_label;
 };
-
 
 class JmpZeroNode : public Node {
 public:
