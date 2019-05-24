@@ -180,15 +180,14 @@ cond_and (TokenizedInput &T, Environment &E, Node *N)
 
     /* See <cond_or> */
     if (T.peek().type == TKN_LOGICAL_AND) {
-        Environment *e = E.child();
-        Node *L = e->node(LogicalNode(TKN_LOGICAL_AND, "false"));
+        Node *L = E.node(LogicalNode(TKN_LOGICAL_AND, "false", "exit"));
         L->merge(&tmp);
-        L->add_child(e->node(ShortCircuitNode(TKN_LOGICAL_AND, "false", "exit")));
+        L->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_AND, "false", "exit")));
 
         while (T.peek().type == TKN_LOGICAL_AND) {
             T.expect(TKN_LOGICAL_AND);
             comp(T, E, L);
-            L->add_child(e->node(ShortCircuitNode(TKN_LOGICAL_AND, "false", "exit")));
+            L->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_AND, "false", "exit")));
         }
 
         N->add_child(L);
@@ -214,15 +213,14 @@ cond_or (TokenizedInput &T, Environment &E, Node *N)
          * Because each LogicalNode is in its own environment then child
          * LogicalNodes will not interfere with label names.
          */
-        Environment *e = E.child();
-        Node *L = e->node(LogicalNode(TKN_LOGICAL_OR, "true"));
+        Node *L = E.node(LogicalNode(TKN_LOGICAL_OR, "true", "exit"));
         L->merge(&tmp);
-        L->add_child(e->node(ShortCircuitNode(TKN_LOGICAL_OR, "true", "exit")));
+        L->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_OR, "true", "exit")));
 
         while (T.peek().type == TKN_LOGICAL_OR) {
             T.expect(TKN_LOGICAL_OR);
             cond_and(T, E, L);
-            L->add_child(e->node(ShortCircuitNode(TKN_LOGICAL_OR, "true", "exit")));
+            L->add_child(E.node(ShortCircuitNode(TKN_LOGICAL_OR, "true", "exit")));
         }
 
         N->add_child(L);
@@ -272,15 +270,14 @@ expr (TokenizedInput &T, Environment &E, Node *N)
          * writes these resolves patches as bytecode.
          */
 
-        Environment *e = E.child();
-        Node *C = e->node(IfElseNode());
+        Node *C = E.node(IfElseNode());
 
         T.expect(TKN_IF);
         T.expect(TKN_LEFT_PAREN);
         cond_or(T, E, C);
         T.expect(TKN_RIGHT_PAREN);
 
-        C->add_child(e->node(JmpZeroNode("false")));
+        C->add_child(E.node(JmpZeroNode("false")));
 
         T.expect(TKN_LEFT_BRACE);
         while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
@@ -289,8 +286,8 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         T.expect(TKN_RIGHT_BRACE);
 
         if (T.peek().type == TKN_ELSE) {
-            C->add_child(e->node(JmpNode("exit")));
-            C->add_child(e->node(LabelNode("false")));
+            C->add_child(E.node(JmpNode("exit")));
+            C->add_child(E.node(LabelNode("false")));
 
             T.expect(TKN_ELSE);
             T.expect(TKN_LEFT_BRACE);
@@ -299,9 +296,9 @@ expr (TokenizedInput &T, Environment &E, Node *N)
             }
             T.expect(TKN_RIGHT_BRACE);
 
-            C->add_child(e->node(LabelNode("exit")));
+            C->add_child(E.node(LabelNode("exit")));
         } else {
-            C->add_child(e->node(LabelNode("false")));
+            C->add_child(E.node(LabelNode("false")));
         }
 
         N->add_child(C);

@@ -7,6 +7,8 @@
 #include <tuple>
 #include <map>
 #include <unordered_map>
+#include <stack>
+#include <assert.h>
 #include "tokenizer.hpp"
 #include "machine.hpp"
 
@@ -19,11 +21,15 @@ class Environment;
 class Node {
 public:
     Node ()
-        : env(NULL), name("root")
+        : env(NULL), name("root"), has_setup(false)
     { }
 
     Node (std::string name)
-        : env(NULL), name(name)
+        : env(NULL), name(name), has_setup(false)
+    { }
+
+    Node (std::string name, bool setup)
+        : env(NULL), name(name), has_setup(setup)
     { }
 
     virtual ~Node()
@@ -58,17 +64,27 @@ public:
         if (children.size() == 0)
             return;
 
+        if (this->has_setup)
+            this->setup();
+
         for (auto C : children) {
             C->gen_code(prog);
             C->code(prog);
         }
     }
 
+    virtual void
+    setup ()
+    {
+        fputs("Bad Setup\n", stderr);
+        exit(1);
+    }
+
     /* generate the bytecode for a particular node */
     virtual void
     code (std::vector<Instruction> &prog)
     {
-        fputs("Bad!!!\n", stderr);
+        fputs("Bad Code\n", stderr);
         exit(1);
     }
 
@@ -87,7 +103,54 @@ public:
     Environment *env;
     std::string name;
     std::vector<Node*> children;
-    /* should be true when a node produces code but doesn't have children */
+    bool has_setup;
+};
+
+/* 
+ * Hold all of the backpatches for a particular scope in the environment.
+ * BackpatchScopes are created through the environment by pushing a new scope
+ * and then popping the scope when you need to write the resolved backpatches.
+ * See: push_backpatch_scope, backpatch_scope, and pop_backpatch_scope
+ */
+class BackpatchScope {
+public:
+    BackpatchScope ()
+    { }
+
+    void
+    create (std::vector<Instruction> &prog, std::string lbl, Opcode op)
+    {
+        if (labels.find(lbl) == labels.end())
+            labels[lbl] = -1;
+        prog.push_back(OP_HALT);
+        auto idx = prog.size() - 1;
+        backpatches.push_back(std::make_tuple(idx, op, lbl));
+    }
+
+    void
+    patch (std::vector<Instruction> &prog, std::string lbl)
+    {
+        labels[lbl] = prog.size();
+    }
+
+    void
+    write (std::vector<Instruction> &prog)
+    {
+        for (auto b : backpatches) {
+            int idx = std::get<0>(b);
+            Opcode op = std::get<1>(b);
+            int label = labels[std::get<2>(b)];
+            if (label < 0) {
+                fprintf(stderr, "Label %s (%d) was never resolved\n", std::get<2>(b).c_str(), label);
+                exit(1);
+            }
+            prog[idx] = create_instruction(op, label);
+        }
+    }
+
+protected:
+    std::unordered_map<std::string, int> labels;
+    std::vector<std::tuple<unsigned long, Opcode, std::string>> backpatches;
 };
 
 /*
@@ -111,38 +174,6 @@ public:
             delete e;
     }
 
-    void
-    generate_backpatch (std::vector<Instruction> &prog,
-            std::string lbl, Opcode op)
-    {
-        if (labels.find(lbl) == labels.end())
-            labels[lbl] = -1;
-        prog.push_back(OP_HALT);
-        auto idx = prog.size() - 1;
-        backpatches.push_back(std::make_tuple(idx, op, lbl));
-    }
-
-    void
-    patch_backpatch (std::vector<Instruction> &prog, std::string lbl)
-    {
-        labels[lbl] = prog.size();
-    }
-
-    void
-    write_backpatches (std::vector<Instruction> &prog)
-    {
-        for (auto b : backpatches) {
-            int idx = std::get<0>(b);
-            Opcode op = std::get<1>(b);
-            int label = labels[std::get<2>(b)];
-            if (label < 0) {
-                fprintf(stderr, "Label %s (%d) was never resolved\n", std::get<2>(b).c_str(), label);
-                exit(1);
-            }
-            prog[idx] = create_instruction(op, label);
-        }
-    }
-
     /* register a symbol in the environment */
     void
     reg_sym (std::string sym, Node *n)
@@ -155,6 +186,26 @@ public:
     root ()
     {
         return this->node(Node());
+    }
+
+    /* start a new backpatch scope for a particular path of code generation */
+    void
+    push_backpatch_scope ()
+    {
+        backpatches.push(BackpatchScope());
+    }
+
+    BackpatchScope&
+    backpatch_scope ()
+    {
+        return backpatches.top();
+    }
+
+    void
+    pop_backpatch_scope ()
+    {
+        assert(backpatches.size() >= 1);
+        backpatches.pop();
     }
 
     /* 
@@ -182,13 +233,12 @@ public:
     }
 
     std::vector<Node*> nodes;
-    std::vector<Environment*> children;
 
 protected:
     Environment *parent;
     std::unordered_map<std::string, Node*> symbols;
-    std::unordered_map<std::string, int> labels;
-    std::vector<std::tuple<unsigned long, Opcode, std::string>> backpatches;
+    std::stack<BackpatchScope> backpatches;
+    std::vector<Environment*> children;
 };
 
 /******************************************
@@ -199,31 +249,22 @@ protected:
 class IfElseNode : public Node {
 public:
     IfElseNode ()
-        : Node("conditional branch")
+        : Node("conditional branch", true)
     { }
+
+    void
+    setup ()
+    {
+        env->push_backpatch_scope();
+    }
 
     void
     code (std::vector<Instruction> &prog)
     {
-        env->write_backpatches(prog);
+        env->backpatch_scope().write(prog);
+        env->pop_backpatch_scope();
     }
 
-};
-
-/* Resolve the address of a particular label */
-class LabelNode : public Node {
-public:
-    LabelNode (std::string label)
-        : Node("label " + label), label(label)
-    { }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        env->patch_backpatch(prog, label);
-    }
-    
-    std::string label;
 };
 
 /*
@@ -233,32 +274,46 @@ public:
  */
 class LogicalNode : public Node {
 public:
-    LogicalNode (int t, std::string s)
-        : Node(t == TKN_LOGICAL_OR ? "or" : "and"), type(t), short_label(s)
+    LogicalNode (int t, std::string s, std::string e)
+        : Node(t == TKN_LOGICAL_OR ? "or" : "and", true)
+        , type(t)
+        , short_label(s)
+        , exit_label(e)
     { }
+
+    void
+    setup ()
+    {
+        env->push_backpatch_scope();
+    }
 
     void
     code (std::vector<Instruction> &prog)
     {
+        BackpatchScope &b = env->backpatch_scope();
+
         if (type == TKN_LOGICAL_OR)
             prog.push_back(create_instruction(OP_PUSH, 0));
         else
             prog.push_back(create_instruction(OP_PUSH, 1));
 
-        env->generate_backpatch(prog, "exit", OP_J);
-        env->patch_backpatch(prog, short_label);
+        b.create(prog, exit_label, OP_J);
+        b.patch(prog, short_label);
 
         if (type == TKN_LOGICAL_OR)
             prog.push_back(create_instruction(OP_PUSH, 1));
         else
             prog.push_back(create_instruction(OP_PUSH, 0));
 
-        env->patch_backpatch(prog, "exit");
-        env->write_backpatches(prog);
+        b.patch(prog, exit_label);
+        b.write(prog);
+
+        env->pop_backpatch_scope();
     }
 
     int type;
     std::string short_label;
+    std::string exit_label;
 };
 
 class ShortCircuitNode : public Node {
@@ -272,10 +327,10 @@ public:
     {
         switch (type) {
             case TKN_LOGICAL_OR:
-                env->generate_backpatch(prog, short_label, OP_JNZ);
+                env->backpatch_scope().create(prog, short_label, OP_JNZ);
                 break;
             case TKN_LOGICAL_AND:
-                env->generate_backpatch(prog, short_label, OP_JEZ);
+                env->backpatch_scope().create(prog, short_label, OP_JEZ);
                 break;
             default:
                 fprintf(stderr, "Type error (%d) %s\n", type, tokentype_to_str(type).c_str());
@@ -288,6 +343,22 @@ public:
     std::string exit_label;
 };
 
+/* Resolve the address of a particular label */
+class LabelNode : public Node {
+public:
+    LabelNode (std::string label)
+        : Node("label " + label), label(label)
+    { }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+        env->backpatch_scope().patch(prog, label);
+    }
+    
+    std::string label;
+};
+
 class JmpZeroNode : public Node {
 public:
     JmpZeroNode (std::string label)
@@ -297,7 +368,7 @@ public:
     void
     code (std::vector<Instruction> &prog)
     {
-        env->generate_backpatch(prog, label, OP_JEZ);
+        env->backpatch_scope().create(prog, label, OP_JEZ);
     }
 
     std::string label;
@@ -312,7 +383,7 @@ public:
     void
     code (std::vector<Instruction> &prog)
     {
-        env->generate_backpatch(prog, label, OP_JNZ);
+        env->backpatch_scope().create(prog, label, OP_JNZ);
     }
 
     std::string label;
@@ -328,7 +399,7 @@ public:
     void
     code (std::vector<Instruction> &prog)
     {
-        env->generate_backpatch(prog, label, OP_J);
+        env->backpatch_scope().create(prog, label, OP_J);
     }
 
     std::string label;
