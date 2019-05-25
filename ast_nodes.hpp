@@ -15,6 +15,11 @@ public:
     DataType type;
 };
 
+/* 
+ * Keeps the instructions for local variables abstracted from the environment.
+ * Should never be a child or parent or anywhere except in the Environment's
+ * container for local variables.
+ */
 class LocalNode : public ExprNode {
 public:
     LocalNode (DataType type)
@@ -28,18 +33,32 @@ public:
     }
 };
 
+class VarNode : public ExprNode {
+public:
+    VarNode (std::string name, Local &local)
+        : ExprNode(name, local.type), local(local)
+    { }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+        prog.push_back(create_instruction(OP_LOAD, local.loc));
+    }
+
+    Local &local;
+};
+
 class AssignmentNode : public Node {
 public:
-    AssignmentNode (ExprNode *var, ExprNode *expr)
+    AssignmentNode (VarNode *var, ExprNode *expr)
         : Node("="), var(var), expr(expr)
     { }
 
     void
     code (std::vector<Instruction> &prog)
     {
-        Local &local = env->get_local(var->name);
         expr->gen_code(prog);
-        prog.push_back(create_instruction(OP_STORE, local.loc));
+        prog.push_back(create_instruction(OP_STORE, var->local.loc));
     }
 
     virtual void
@@ -47,29 +66,12 @@ public:
     {
         lvl++;
         puts(name.c_str());
+        var->print_tree(lvl);
         expr->print_tree(lvl);
     }
 
-    ExprNode* var;
+    VarNode *var;
     ExprNode *expr;
-};
-
-class VarNode : public ExprNode {
-public:
-    VarNode (std::string name)
-        : ExprNode(name, FREE)
-    { }
-
-    VarNode (std::string name, DataType type)
-        : ExprNode(name, type)
-    { }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        Local &local = env->get_local(name);
-        prog.push_back(create_instruction(OP_LOAD, local.loc));
-    }
 };
 
 class NumNode : public ExprNode {
@@ -140,4 +142,3 @@ public:
     int op;
     Node *right;
 };
-

@@ -27,10 +27,16 @@ error_func (int error_type, Token t, int data)
 
 ExprNode* expr (TokenizedInput &T, Environment &E);
 
-ExprNode*
-var_free (TokenizedInput &T, Environment &E)
+/*
+ * At the time of parsing the variable should be defined in some environment.
+ * If it isn't then this will raise an error that the var is undefined.
+ */
+VarNode*
+var (TokenizedInput &T, Environment &E)
 {
-    return E.node(VarNode(T.expect(TKN_NAME).str));
+    std::string name = T.expect(TKN_NAME).str;
+    Local &local = E.get_local(name);
+    return E.node(VarNode(name, local));
 }
 
 ExprNode*
@@ -46,7 +52,7 @@ atom (TokenizedInput &T, Environment &E)
         return number(T, E);
     }
     else {
-        return var_free(T, E);
+        return var(T, E);
     }
 }
 
@@ -136,34 +142,37 @@ expr (TokenizedInput &T, Environment &E)
     return sum(T, E);
 }
 
-ExprNode*
+/* Declare a variable in the environment before returning it */
+VarNode*
 var_declare (TokenizedInput &T, Environment &E)
 {
     DataType type = type_name(T, E);
-    std::string name = T.expect(TKN_NAME).str;
-    E.reg_local(name, Local(E.node(LocalNode(type)), type));
-    return E.node(VarNode(name, type));
+    /* use the next token's value without consuming it */
+    if (T.peek().type != TKN_NAME)
+        T.expect(TKN_NAME);
+    std::string name = T.peek().str;
+    E.define_local(name, Local(E.node(LocalNode(type)), type));
+    return var(T, E);
 }
 
 Node*
 assign (TokenizedInput &T, Environment &E)
 {
-    ExprNode* var;
-
     /* 
      * If the assignment has a type definition then we are declaring a new
      * variable of that type.
      */
+    VarNode* v;
     if (is_type_name(T.peek()))
-        var = var_declare(T, E);
+        v = var_declare(T, E);
     else
-        var = var_free(T, E);
+        v = var(T, E);
 
     T.expect(TKN_EQUAL);
     ExprNode *val = expr(T, E);
     T.expect(TKN_SEMICOLON);
 
-    return E.node(AssignmentNode(var, val));
+    return E.node(AssignmentNode(v, val));
 }
 
 Node *

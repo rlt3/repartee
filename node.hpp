@@ -20,11 +20,7 @@ typedef enum _DataType {
 
 struct Local {
     Local ()
-        : node(NULL), type(FREE), loc(-1)
-    { }
-
-    Local (Node *n)
-        : node(n), type(FREE), loc(-1)
+        : node(NULL), type(VOID), loc(-1)
     { }
 
     Local (Node *n, DataType type)

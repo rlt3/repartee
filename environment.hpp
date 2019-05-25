@@ -79,7 +79,7 @@ public:
 
     /* register a symbol in the environment */
     void
-    reg_local (std::string sym, Local v)
+    define_local (std::string sym, Local v)
     {
         syms_local[sym] = v;
     }
