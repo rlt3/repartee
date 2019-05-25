@@ -61,16 +61,18 @@ public:
     void
     gen_code (std::vector<Instruction> &prog)
     {
-        if (children.size() == 0)
+        if (children.size() == 0) {
+            code(prog);
             return;
+        }
 
         if (this->has_setup)
             this->setup();
 
-        for (auto C : children) {
+        for (auto C : children)
             C->gen_code(prog);
-            C->code(prog);
-        }
+
+        code(prog);
     }
 
     virtual void
@@ -152,24 +154,25 @@ protected:
     std::vector<std::tuple<unsigned long, Opcode, std::string>> backpatches;
 };
 
-typedef enum _VarType {
+typedef enum _DataType {
     NULLABLE,
     INTEGER,
     FLOAT,
-    FUNCTION
-} VarType;
+    STRING,
+    FUNCTION,
+} DataType;
 
 struct Variable {
     Variable ()
         : name("bad"), type(NULLABLE), is_param(false)
     { }
 
-    Variable (std::string name, VarType type, bool is_param)
+    Variable (std::string name, DataType type, bool is_param)
         : name(name), type(type), is_param(is_param)
     { }
 
     std::string name;
-    VarType type;
+    DataType type;
     bool is_param;
 };
 
@@ -243,7 +246,6 @@ public:
         std::vector<Instruction> prog;
         /* TODO: recursively write all function definitions first */
         root()->gen_code(prog);
-        root()->code(prog);
         return prog;
     }
 
@@ -485,37 +487,38 @@ public:
 
 class AssignmentNode : public Node {
 public:
-    AssignmentNode (int var_id)
-        : Node("="), var_id(var_id)
+    AssignmentNode (Variable var, Node *expr)
+        : Node("="), var(var), expr(expr)
     { }
 
     void
     code (std::vector<Instruction> &prog)
     {
-        prog.push_back(create_instruction(OP_STORE, var_id));
+        //prog.push_back(create_instruction(OP_STORE, var_id));
     }
 
-    int var_id;
+    Variable var;
+    Node *expr;
 };
 
 class VarNode : public Node {
 public:
-    VarNode (int var_id)
-        : Node("var#" + std::to_string(var_id)), var_id(var_id)
+    VarNode (std::string name)
+        : Node("var#" + name)
     { }
 
     void
     code (std::vector<Instruction> &prog)
     {
-        prog.push_back(create_instruction(OP_LOAD, var_id));
+        //prog.push_back(create_instruction(OP_LOAD, var_id));
     }
 
-    int var_id;
+    std::string name;
 };
 
-class AtomNode : public Node {
+class NumNode : public Node {
 public:
-    AtomNode (int value)
+    NumNode (int value)
         : Node(std::to_string(value)), value(value)
     { }
 
@@ -528,12 +531,12 @@ public:
     int value;
 };
 
-class OperatorNode : public Node {
+class BinaryOpNode : public Node {
 public:
-    OperatorNode (int type)
-        : Node(), type(type)
+    BinaryOpNode (Node *left, int op, Node *right)
+        : Node(), left(left), op(op), right(right)
     {
-        switch (type) {
+        switch (op) {
             case TKN_ADD: name = "+"; break;
             case TKN_SUB: name = "-"; break;
             case TKN_MUL: name = "*"; break;
@@ -545,24 +548,45 @@ public:
     void
     code (std::vector<Instruction> &prog)
     {
-        switch (type) {
+        Opcode ins_op;
+        switch (op) {
             case TKN_ADD:
-                prog.push_back(create_instruction(OP_ADD, 2));
+                ins_op = OP_ADD;
                 break;
             case TKN_SUB:
-                prog.push_back(create_instruction(OP_SUB, 2));
+                ins_op = OP_SUB;
                 break;
             case TKN_MUL:
-                prog.push_back(create_instruction(OP_MUL, 2));
+                ins_op = OP_MUL;
                 break;
             case TKN_DIV:
-                prog.push_back(create_instruction(OP_DIV, 2));
+                ins_op = OP_DIV;
                 break;
             case TKN_DBL_EQUAL:
-                prog.push_back(create_instruction(OP_CMP, 0));
+                ins_op = OP_CMP;
                 break;
         }
+        left->gen_code(prog);
+        right->gen_code(prog);
+        prog.push_back(create_instruction(ins_op, 2));
     }
 
-    int type;
+    virtual void
+    print (int lvl)
+    {
+        for (int i = 0; i < lvl * 2; i++)
+            putchar(' ');
+        puts(name.c_str());
+        lvl++;
+        for (int i = 0; i < lvl * 2; i++)
+            putchar(' ');
+        left->print(lvl);
+        for (int i = 0; i < lvl * 2; i++)
+            putchar(' ');
+        right->print(lvl);
+    }
+
+    Node *left;
+    int op;
+    Node *right;
 };
