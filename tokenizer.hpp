@@ -20,6 +20,7 @@ enum TokenType {
     TKN_INT,
     TKN_FLOAT,
     TKN_STRING,
+    TKN_STR,
 
     TKN_EQUAL,
     TKN_PERIOD,

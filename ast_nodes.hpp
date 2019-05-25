@@ -89,6 +89,19 @@ public:
     int value;
 };
 
+class StrNode : public ExprNode {
+public:
+    StrNode (std::string str)
+        : ExprNode(str, STRING)
+    { }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+        //prog.push_back(create_instruction(OP_PUSH, value));
+    }
+};
+
 class BinaryOpNode : public ExprNode {
 public:
     BinaryOpNode (Node *left, int op, Node *right)

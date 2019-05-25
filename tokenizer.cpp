@@ -199,6 +199,49 @@ coalesce (char c, std::istream &input, int &line, int &col,
     return Token(line, col, type, str);
 }
 
+/* 
+ * Skip initial quote, consume all tokens until close quote then consume it 
+ * and return.
+ */
+Token
+coalesce_string (char c, std::istream &input, int &line, int &col)
+{
+    std::string str = "";
+    while (input.get(c)) {
+        col++;
+        if (c != '"')
+            str += c;
+        else
+            break;
+    }
+    return Token(line, col, TKN_STR, str);
+}
+
+bool
+handle_comment (char c, std::istream &input, int &col, bool start)
+{
+    char s1 = start ? '/' : '*';
+    char s2 = start ? '*' : '/';
+
+    if (c == s1) {
+        input.get(c);
+        if (c == s2) {
+            col++;
+            return true;
+        }
+        else {
+            input.putback(c);
+        }
+    }
+    return false;
+}
+
+bool
+is_endstring (char c)
+{
+    return (c == '"');
+}
+
 /* Tokenize an input file */
 TokenizedInput
 tokenize (std::istream &input)
@@ -207,6 +250,7 @@ tokenize (std::istream &input)
     std::deque<Token> tokens;
     std::stringstream error;
 
+    bool in_comment = false;
     int line = 0;
     int col = 0;
     Token t;
@@ -225,11 +269,23 @@ tokenize (std::istream &input)
             continue;
         }
 
-        if (SymTypes.find(c) != SymTypes.end()) {
+        /* treat all characters within a comment as whitespace */
+        if (!in_comment && handle_comment(c, input, col, true))
+            in_comment = true;
+
+        if (in_comment) {
+            t = Token(line, col, TKN_WHITE, " ");
+            if (handle_comment(c, input, col, false))
+                in_comment = false;
+        } 
+        else if (SymTypes.find(c) != SymTypes.end()) {
             if (is_double(c))
                 t = handle_double(c, input, line, col, SymTypes.at(c));
             else
                 t = Token(line, col, SymTypes.at(c), std::string(1, c));
+        }
+        else if (c == '"') {
+            t = coalesce_string(c, input, line, col);
         }
         else if (isdigit(c)) {
             t = coalesce(c, input, line, col, TKN_NUMBER, isdigit);
@@ -289,6 +345,7 @@ tokentype_to_str (int type)
         case TKN_RIGHT_BRACKET: return "]";
         case TKN_LEFT_BRACE: return "{";
         case TKN_RIGHT_BRACE: return "}";
+        case TKN_STR: return "string type";
         case TKN_NUMBER: return "number";
         case TKN_NAME: return "name";
         case TKN_EOL: return "EOL";

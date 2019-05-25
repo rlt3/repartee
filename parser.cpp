@@ -39,7 +39,13 @@ var (TokenizedInput &T, Environment &E)
     return E.node(VarNode(name, local));
 }
 
-ExprNode*
+StrNode*
+str (TokenizedInput &T, Environment &E)
+{
+    return E.node(StrNode(T.expect(TKN_STR).str));
+}
+
+NumNode*
 number (TokenizedInput &T, Environment &E)
 {
     return E.node(NumNode(T.expect(TKN_NUMBER).to_int()));
@@ -50,6 +56,9 @@ atom (TokenizedInput &T, Environment &E)
 {
     if (T.peek().type == TKN_NUMBER) {
         return number(T, E);
+    }
+    else if (T.peek().type == TKN_STR) {
+        return str(T, E);
     }
     else {
         return var(T, E);
