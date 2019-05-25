@@ -2,6 +2,50 @@
 #include "parser.hpp"
 
 /*
+ * TODO:
+ * Major Refactor.
+ *
+ * TokenizedInput can just be a simple token container with simple methods like
+ * pop, peek, next. Instead of setting the error function in TokenizedInput we
+ * can build a static, global error and/or warning function that can be called.
+ * All errors/warnings will be buffered until the end of parsing or until a 
+ * certain threshold has been reached which then forces an early exit.
+ *
+ * This lets us build a Parser class for the parser that holds the
+ * TokenizedInput and Environment. This lets us extend the parser more easily
+ * by having a standard container for all recursive descent functions. This
+ * also means we would need to make an 'expect' method but also lets us more
+ * easily create an 'assume' method for when we run into errors and need to
+ * move on, finding other ones.
+ *
+ * A Parser class would also give us access to a better allocator for Nodes, or
+ * at least a wrapped allocator, so each node can have access to its
+ * environment AND file name as well as its line and column numbers.
+ *
+ * Environment should have an implementation file and the 'Node' allocator
+ * method can be simplified to some 'add_node' method to take ownership. The
+ * template method can be moved to this file as part of the Parser class.
+ *
+ * Node can *probably* be an interface class. All AST Nodes should be just as
+ * they are for simplicity (less boiler plate (lmao c++)).
+ *
+ * A custom, global error/warning interface requires global error types and
+ * a single entry point. Easiest path will probably be C va_args.
+ *
+ * Data types and storage class information need to be kept in a single place
+ * preferably outside of the "node.hpp" file. A 'Local' defines a specific
+ * storage that is machine specific, so it might gets its own header and
+ * implementation as well as a generalization ('Local', 'Global', 'Closure').
+ * This can be another way of outputting bytecode that is separate from the
+ * Environment instead of loading an AST node into a Local storage type.
+ *
+ * Finally, implement unary operations and floating point numbers. Floating
+ * point numbers will require additional VM instructions and also instructions
+ * that can correctly embed the right floating point format. The same goes for
+ * negative numbers.
+ */
+
+/*
  * TODO: Can be a general error function with a void pointer data type that can
  * be casted to a particular type since all references will exist on a stack at
  * error time. Error types then can be defined in a single place as well.
