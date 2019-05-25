@@ -73,7 +73,7 @@ main (int argc, char **argv)
     std::vector<Instruction> bytecode = E.generate_bytecode();
 
     if (is_debug) {
-        E.root()->print(0);
+        E.root()->print_tree(0);
         print_bytecode(bytecode);
     }
 

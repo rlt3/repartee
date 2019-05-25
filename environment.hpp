@@ -91,14 +91,20 @@ public:
 
     /* debugging functions which help see how the tree has been parsed */
     virtual void
-    print (int lvl)
+    print_tree (int lvl)
     {
         for (int i = 0; i < lvl * 2; i++)
             putchar(' ');
-        puts(name.c_str());
+        this->print(lvl);
         lvl++;
         for (auto C : children)
-            C->print(lvl);
+            C->print_tree(lvl);
+    }
+
+    virtual void
+    print (int lvl)
+    {
+        puts(name.c_str());
     }
 
     Environment *env;
@@ -155,7 +161,7 @@ protected:
 };
 
 typedef enum _DataType {
-    NULLABLE,
+    VOID,
     INTEGER,
     FLOAT,
     STRING,
@@ -164,7 +170,7 @@ typedef enum _DataType {
 
 struct Variable {
     Variable ()
-        : name("bad"), type(NULLABLE), is_param(false)
+        : name("bad"), type(VOID), is_param(false)
     { }
 
     Variable (std::string name, DataType type, bool is_param)
@@ -273,12 +279,12 @@ public:
      * boilerplate.
      */
     template <typename T>
-    Node*
+    T*
     node (T node)
     {
-        Node *n = new T(node);
+        T *n = new T(node);
         n->set_env(this);
-        nodes.push_back(n);
+        nodes.push_back(reinterpret_cast<Node*>(n));
         return n;
     }
 
@@ -307,204 +313,54 @@ protected:
             AST Node Classes
  ******************************************/
 
-class FuncNode : public Node {
-    FuncNode (std::string name, std::vector<Variable> params)
-        : Node("function", true)
-    { }
-
-    void
-    setup ()
-    {
-        /* write params ? */
-    }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        /* write function body and return */
-    }
-};
-
-/* Write out the instructions for all resolved labels/addresses */
-class IfElseNode : public Node {
+class ExprNode : public Node {
 public:
-    IfElseNode ()
-        : Node("conditional branch", true)
+    ExprNode (DataType returntype)
+        : Node(), returntype(returntype)
     { }
 
-    void
-    setup ()
-    {
-        env->push_backpatch_scope();
-    }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        env->backpatch_scope().write(prog);
-        env->pop_backpatch_scope();
-    }
-
-};
-
-/*
- * Resolves the backpatch records the ShortCircuitNodes generate within the
- * same environment. Produces the code that produces a 1 or 0 for logical
- * expressions.
- */
-class LogicalNode : public Node {
-public:
-    LogicalNode (int t, std::string s, std::string e)
-        : Node(t == TKN_LOGICAL_OR ? "or" : "and", true)
-        , type(t)
-        , short_label(s)
-        , exit_label(e)
+    ExprNode (std::string name, DataType returntype)
+        : Node(name), returntype(returntype)
     { }
 
-    void
-    setup ()
-    {
-        env->push_backpatch_scope();
-    }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        BackpatchScope &b = env->backpatch_scope();
-
-        if (type == TKN_LOGICAL_OR)
-            prog.push_back(create_instruction(OP_PUSH, 0));
-        else
-            prog.push_back(create_instruction(OP_PUSH, 1));
-
-        b.create(prog, exit_label, OP_J);
-        b.patch(prog, short_label);
-
-        if (type == TKN_LOGICAL_OR)
-            prog.push_back(create_instruction(OP_PUSH, 1));
-        else
-            prog.push_back(create_instruction(OP_PUSH, 0));
-
-        b.patch(prog, exit_label);
-        b.write(prog);
-
-        env->pop_backpatch_scope();
-    }
-
-    int type;
-    std::string short_label;
-    std::string exit_label;
-};
-
-class ShortCircuitNode : public Node {
-public:
-    ShortCircuitNode (int type, std::string s, std::string e)
-        : Node("short circuit"), type(type), short_label(s), exit_label(e)
-    { }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        switch (type) {
-            case TKN_LOGICAL_OR:
-                env->backpatch_scope().create(prog, short_label, OP_JNZ);
-                break;
-            case TKN_LOGICAL_AND:
-                env->backpatch_scope().create(prog, short_label, OP_JEZ);
-                break;
-            default:
-                fprintf(stderr, "Type error (%d) %s\n", type, tokentype_to_str(type).c_str());
-                exit(1);
-        }
-    }
-    
-    int type;
-    std::string short_label;
-    std::string exit_label;
-};
-
-/* Resolve the address of a particular label */
-class LabelNode : public Node {
-public:
-    LabelNode (std::string label)
-        : Node("label " + label), label(label)
-    { }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        env->backpatch_scope().patch(prog, label);
-    }
-    
-    std::string label;
-};
-
-class JmpZeroNode : public Node {
-public:
-    JmpZeroNode (std::string label)
-        : Node("jez " + label), label(label)
-    { }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        env->backpatch_scope().create(prog, label, OP_JEZ);
-    }
-
-    std::string label;
-};
-
-class JmpNonNull : public Node {
-public:
-    JmpNonNull (std::string label)
-        : Node("jnz " + label), label(label)
-    { }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        env->backpatch_scope().create(prog, label, OP_JNZ);
-    }
-
-    std::string label;
-};
-
-/* An unconditional jump to some label to-be-resolved */
-class JmpNode : public Node {
-public:
-    JmpNode (std::string label)
-        : Node("j " + label), label(label)
-    { }
-
-    void
-    code (std::vector<Instruction> &prog)
-    {
-        env->backpatch_scope().create(prog, label, OP_J);
-    }
-
-    std::string label;
+    DataType returntype;
 };
 
 class AssignmentNode : public Node {
 public:
-    AssignmentNode (Variable var, Node *expr)
+    AssignmentNode (Variable var, ExprNode *expr)
         : Node("="), var(var), expr(expr)
     { }
 
     void
     code (std::vector<Instruction> &prog)
     {
+        /*
+         * A simple vector of instructions isn't cutting it anymore. Need to
+         * figure out the variable's type in relation to the expression's type.
+         * Then, need to figure out its storage location on the stack which
+         * the environment should handle.
+         */
+        
         //prog.push_back(create_instruction(OP_STORE, var_id));
+    }
+
+    virtual void
+    print (int lvl)
+    {
+        lvl++;
+        puts(name.c_str());
+        expr->print_tree(lvl);
     }
 
     Variable var;
     Node *expr;
 };
 
-class VarNode : public Node {
+class VarNode : public ExprNode {
 public:
     VarNode (std::string name)
-        : Node("var#" + name)
+        : ExprNode("var#" + name, VOID)
     { }
 
     void
@@ -516,10 +372,10 @@ public:
     std::string name;
 };
 
-class NumNode : public Node {
+class NumNode : public ExprNode {
 public:
     NumNode (int value)
-        : Node(std::to_string(value)), value(value)
+        : ExprNode(std::to_string(value), INTEGER), value(value)
     { }
 
     void
@@ -531,10 +387,10 @@ public:
     int value;
 };
 
-class BinaryOpNode : public Node {
+class BinaryOpNode : public ExprNode {
 public:
     BinaryOpNode (Node *left, int op, Node *right)
-        : Node(), left(left), op(op), right(right)
+        : ExprNode(INTEGER), left(left), op(op), right(right)
     {
         switch (op) {
             case TKN_ADD: name = "+"; break;
@@ -574,19 +430,191 @@ public:
     virtual void
     print (int lvl)
     {
-        for (int i = 0; i < lvl * 2; i++)
-            putchar(' ');
-        puts(name.c_str());
         lvl++;
-        for (int i = 0; i < lvl * 2; i++)
-            putchar(' ');
-        left->print(lvl);
-        for (int i = 0; i < lvl * 2; i++)
-            putchar(' ');
-        right->print(lvl);
+        puts(name.c_str());
+        left->print_tree(lvl);
+        right->print_tree(lvl);
     }
 
     Node *left;
     int op;
     Node *right;
 };
+
+//class FuncNode : public Node {
+//    FuncNode (std::string name, std::vector<Variable> params)
+//        : Node("function", true)
+//    { }
+//
+//    void
+//    setup ()
+//    {
+//        /* write params ? */
+//    }
+//
+//    void
+//    code (std::vector<Instruction> &prog)
+//    {
+//        /* write function body and return */
+//    }
+//};
+//
+///* Write out the instructions for all resolved labels/addresses */
+//class IfElseNode : public Node {
+//public:
+//    IfElseNode ()
+//        : Node("conditional branch", true)
+//    { }
+//
+//    void
+//    setup ()
+//    {
+//        env->push_backpatch_scope();
+//    }
+//
+//    void
+//    code (std::vector<Instruction> &prog)
+//    {
+//        env->backpatch_scope().write(prog);
+//        env->pop_backpatch_scope();
+//    }
+//
+//};
+//
+///*
+// * Resolves the backpatch records the ShortCircuitNodes generate within the
+// * same environment. Produces the code that produces a 1 or 0 for logical
+// * expressions.
+// */
+//class LogicalNode : public Node {
+//public:
+//    LogicalNode (int t, std::string s, std::string e)
+//        : Node(t == TKN_LOGICAL_OR ? "or" : "and", true)
+//        , type(t)
+//        , short_label(s)
+//        , exit_label(e)
+//    { }
+//
+//    void
+//    setup ()
+//    {
+//        env->push_backpatch_scope();
+//    }
+//
+//    void
+//    code (std::vector<Instruction> &prog)
+//    {
+//        BackpatchScope &b = env->backpatch_scope();
+//
+//        if (type == TKN_LOGICAL_OR)
+//            prog.push_back(create_instruction(OP_PUSH, 0));
+//        else
+//            prog.push_back(create_instruction(OP_PUSH, 1));
+//
+//        b.create(prog, exit_label, OP_J);
+//        b.patch(prog, short_label);
+//
+//        if (type == TKN_LOGICAL_OR)
+//            prog.push_back(create_instruction(OP_PUSH, 1));
+//        else
+//            prog.push_back(create_instruction(OP_PUSH, 0));
+//
+//        b.patch(prog, exit_label);
+//        b.write(prog);
+//
+//        env->pop_backpatch_scope();
+//    }
+//
+//    int type;
+//    std::string short_label;
+//    std::string exit_label;
+//};
+//
+//class ShortCircuitNode : public Node {
+//public:
+//    ShortCircuitNode (int type, std::string s, std::string e)
+//        : Node("short circuit"), type(type), short_label(s), exit_label(e)
+//    { }
+//
+//    void
+//    code (std::vector<Instruction> &prog)
+//    {
+//        switch (type) {
+//            case TKN_LOGICAL_OR:
+//                env->backpatch_scope().create(prog, short_label, OP_JNZ);
+//                break;
+//            case TKN_LOGICAL_AND:
+//                env->backpatch_scope().create(prog, short_label, OP_JEZ);
+//                break;
+//            default:
+//                fprintf(stderr, "Type error (%d) %s\n", type, tokentype_to_str(type).c_str());
+//                exit(1);
+//        }
+//    }
+//    
+//    int type;
+//    std::string short_label;
+//    std::string exit_label;
+//};
+//
+///* Resolve the address of a particular label */
+//class LabelNode : public Node {
+//public:
+//    LabelNode (std::string label)
+//        : Node("label " + label), label(label)
+//    { }
+//
+//    void
+//    code (std::vector<Instruction> &prog)
+//    {
+//        env->backpatch_scope().patch(prog, label);
+//    }
+//    
+//    std::string label;
+//};
+//
+//class JmpZeroNode : public Node {
+//public:
+//    JmpZeroNode (std::string label)
+//        : Node("jez " + label), label(label)
+//    { }
+//
+//    void
+//    code (std::vector<Instruction> &prog)
+//    {
+//        env->backpatch_scope().create(prog, label, OP_JEZ);
+//    }
+//
+//    std::string label;
+//};
+//
+//class JmpNonNull : public Node {
+//public:
+//    JmpNonNull (std::string label)
+//        : Node("jnz " + label), label(label)
+//    { }
+//
+//    void
+//    code (std::vector<Instruction> &prog)
+//    {
+//        env->backpatch_scope().create(prog, label, OP_JNZ);
+//    }
+//
+//    std::string label;
+//};
+//
+///* An unconditional jump to some label to-be-resolved */
+//class JmpNode : public Node {
+//public:
+//    JmpNode (std::string label)
+//        : Node("j " + label), label(label)
+//    { }
+//
+//    void
+//    code (std::vector<Instruction> &prog)
+//    {
+//        env->backpatch_scope().create(prog, label, OP_J);
+//    }
+//
+//    std::string label;
+//};

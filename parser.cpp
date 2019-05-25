@@ -27,111 +27,146 @@ error_func (int error_type, Token t, int data)
     exit(1);
 }
 
-void cond_or (TokenizedInput &T, Environment &E, Node *N);
-void expr (TokenizedInput &T, Environment &E, Node *N);
+ExprNode* expr (TokenizedInput &T, Environment &E);
 
-///* <atom> = number | name */
-//void
-//atom (TokenizedInput &T, Environment &E, Node *N)
-//{
-//    if (T.peek().type == TKN_NUMBER) {
-//        int num = T.expect(TKN_NUMBER).to_int();
-//        N->add_child(E.node(NumNode(num)));
-//    }
-//    else {
-//        int var_id = add_or_get_var_id(T.expect(TKN_NAME).str);
-//        N->add_child(E.node(VarNode(var_id)));
-//    }
-//}
-//
-///* <item> = (<cond_or>) | <atom> */
-//void
-//item (TokenizedInput &T, Environment &E, Node *N)
-//{
-//    if (T.peek().type == TKN_LEFT_PAREN) {
-//        T.expect(TKN_LEFT_PAREN);
-//        cond_or(T, E, N);
-//        T.expect(TKN_RIGHT_PAREN);
-//    }
-//    else {
-//        atom(T, E, N);
-//    }
-//}
-//
-///* 
-// * <factor> := <item> <factorTail> | <item> 
-// * <factorTail> := * <atom> <factorTail> | / <atom> <factorTail>
-// */
-//void
-//factor (TokenizedInput &T, Environment &E, Node *N)
-//{
-//    Node tmp;
-//    item(T, E, &tmp);
-//
-//    /* For explanation see: sum */
-//    //if (T.peek().type == TKN_MUL || T.peek().type == TKN_DIV) {
-//    //    Node *next, *curr;
-//    //    next = curr = NULL;
-//
-//    //    while (T.peek().type == TKN_MUL || T.peek().type == TKN_DIV) {
-//    //        next = E.node(OperatorNode(T.next().type));
-//    //        if (curr)
-//    //            next->add_child(curr);
-//    //        else
-//    //            next->merge(&tmp);
-//    //        item(T, E, next);
-//    //        curr = next;
-//    //    }
-//
-//    //    N->add_child(curr);
-//    //} else {
-//    //    N->merge(&tmp);
-//    //}
-//}
-//
-///*
-// * <sum> := <factor> | <factor> <sumTail>
-// * <sumTail> := + <factor> <sumTail> | - <factor> <sumTail>
-// */
-//void
-//sum (TokenizedInput &T, Environment &E, Node *N)
-//{
-//    Node tmp;
-//    factor(T, E, &tmp);
-//
-//    /* 
-//     * Recurse (iteratively) down the sum and construct the tree from the
-//     * bottom-up. If we constructed the tree as we parsed it then arithmetic
-//     * expressions would be right-associative when they are naturally left
-//     * associative.
-//     */
-//    if (T.peek().type == TKN_ADD || T.peek().type == TKN_SUB) {
-//        while (T.peek().type == TKN_ADD || T.peek().type == TKN_SUB) {
-//            T.next();
-//            //next = E.node(OperatorNode(T.next().type));
-//            ///* 
-//            // * add the last parsed expression as a child of the current one
-//            // * since we are building the tree in 'reverse'
-//            // */
-//            //if (curr)
-//            //    next->add_child(curr);
-//            ///* 
-//            // * if !curr then we are at the top of the tree and we can add the
-//            // * left part of the originally parsed expression (top of this func).
-//            // */
-//            //else
-//            //    next->merge(&tmp);
-//            factor(T, E, &tmp);
-//            /* curr will be the child of whatever is parsed or child of N */
-//            //curr = next;
-//        }
-//
-//        //N->add_child(curr);
-//    } else {
-//        N->merge(&tmp);
-//    }
-//}
-//
+ExprNode*
+var (TokenizedInput &T, Environment &E)
+{
+    return E.node(VarNode(T.expect(TKN_NAME).str));
+}
+
+ExprNode*
+number (TokenizedInput &T, Environment &E)
+{
+    return E.node(NumNode(T.expect(TKN_NUMBER).to_int()));
+}
+
+ExprNode*
+atom (TokenizedInput &T, Environment &E)
+{
+    if (T.peek().type == TKN_NUMBER) {
+        return number(T, E);
+    }
+    else {
+        return var(T, E);
+    }
+}
+
+/* <item> = (<expr>) | <atom> */
+ExprNode*
+item (TokenizedInput &T, Environment &E)
+{
+    if (T.peek().type == TKN_LEFT_PAREN) {
+        T.expect(TKN_LEFT_PAREN);
+        ExprNode *e = expr(T, E);
+        T.expect(TKN_RIGHT_PAREN);
+        return e;
+    }
+    else {
+        return atom(T, E);
+    }
+}
+
+ExprNode*
+factor_tail (TokenizedInput &T, Environment &E, ExprNode *prev)
+{
+    /* see: sum_tail */
+    if (!(T.peek().type == TKN_MUL || T.peek().type == TKN_DIV))
+        return prev;
+
+    int op = T.next().type;
+    Node *right = item(T, E);
+
+    return factor_tail(T, E, E.node(BinaryOpNode(prev, op, right)));
+}
+
+ExprNode*
+factor (TokenizedInput &T, Environment &E)
+{
+    return factor_tail(T, E, item(T, E));
+}
+
+ExprNode*
+sum_tail (TokenizedInput &T, Environment &E, ExprNode *prev)
+{
+    /* 
+     * Create the BinaryOpsNode for each parsed binary op but pass it along to
+     * the next so it can be put as a child of the next. This builds the tree
+     * in 'reverse' keeping the left-associativity of arithmetic.
+     */
+    if (!(T.peek().type == TKN_ADD || T.peek().type == TKN_SUB))
+        return prev;
+
+    int op = T.next().type;
+    Node *right = factor(T, E);
+
+    return sum_tail(T, E, E.node(BinaryOpNode(prev, op, right)));
+}
+
+ExprNode*
+sum (TokenizedInput &T, Environment &E)
+{
+    return sum_tail(T, E, factor(T, E));
+}
+
+VarNode*
+var_declare (TokenizedInput &T, Environment &E)
+{
+    Variable var;
+    Token t = T.next();
+    std::string name = T.expect(TKN_NAME).str;
+
+    switch (t.type) {
+        case TKN_INT:    var = Variable(name, INTEGER, false); break;
+        case TKN_STRING: var = Variable(name, STRING, false); break;
+        default: break;
+    }
+
+    E.reg_var(var.name, var);
+    return var;
+}
+
+ExprNode*
+expr (TokenizedInput &T, Environment &E)
+{
+    return sum(T, E);
+}
+
+Node *
+define (TokenizedInput &T, Environment &E)
+{
+    if (T.peek().type == TKN_INT || T.peek().type == TKN_STRING) {
+        Variable var = var_declare(T, E);
+
+        if (T.peek().type == TKN_EQUAL) {
+            T.expect(TKN_EQUAL);
+            ExprNode *val = expr(T, E);
+            T.expect(TKN_SEMICOLON);
+            return E.node(AssignmentNode(var, val));
+        } else {
+            T.expect(TKN_SEMICOLON);
+            return E.node(VarNode(var.name));
+        }
+    } else {
+        Node *e = expr(T, E);
+        T.expect(TKN_SEMICOLON);
+        return e;
+    }
+}
+
+Environment
+parse (TokenizedInput &T)
+{
+    T.set_runtime_error_func(error_func);
+    Environment E(NULL);
+    Node *N = E.root();
+
+    while (!T.empty())
+        N->add_child(define(T, E));
+
+    return E;
+}
+
 ///* <comp> := <sum> == <sum> | <sum> */
 //void
 //comp (TokenizedInput &T, Environment &E, Node *N)
@@ -334,102 +369,3 @@ void expr (TokenizedInput &T, Environment &E, Node *N);
 //    std::vector<Variable> p = params(T, E, N);
 //    body(T, E, N);
 //}
-
-Node*
-var (TokenizedInput &T, Environment &E)
-{
-    return E.node(VarNode(T.expect(TKN_NAME).str));
-}
-
-Node*
-number (TokenizedInput &T, Environment &E)
-{
-    return E.node(NumNode(T.expect(TKN_NUMBER).to_int()));
-}
-
-Node*
-sum_tail (TokenizedInput &T, Environment &E, Node *prev)
-{
-    /*
-     * As whole BinaryOps get parsed, create the BinaryOpNode and send that to
-     * the next function call.
-     *
-     * 2 - 5 + 3
-     *
-     * Parse 2 - 5 and construct the binary ops. Then notice that + is still
-     * around. So, a recursive can start with the sum_tail from there. At each
-     * stage the previous `prev` node is the left and the newly created node
-     * is the right and it passes on to the next.
-     */
-    if (!(T.peek().type == TKN_ADD || T.peek().type == TKN_SUB))
-        return prev;
-
-    int op = T.next().type;
-    Node *right = number(T, E);
-
-    return sum_tail(T, E, E.node(BinaryOpNode(prev, op, right)));
-}
-
-Node*
-sum (TokenizedInput &T, Environment &E)
-{
-    return sum_tail(T, E, number(T, E));
-}
-
-Variable
-var_declare (TokenizedInput &T, Environment &E)
-{
-    Variable var;
-    Token t = T.next();
-    std::string name = T.expect(TKN_NAME).str;
-
-    switch (t.type) {
-        case TKN_INT:    var = Variable(name, INTEGER, false); break;
-        case TKN_STRING: var = Variable(name, STRING, false); break;
-        default: break;
-    }
-
-    return var;
-}
-
-Node*
-expr (TokenizedInput &T, Environment &E)
-{
-    Node *s = sum(T, E);
-    T.expect(TKN_SEMICOLON);
-    return s;
-}
-
-Node *
-define (TokenizedInput &T, Environment &E)
-{
-    if (T.peek().type == TKN_INT || T.peek().type == TKN_STRING) {
-        Variable var = var_declare(T, E);
-        E.reg_var(var.name, var);
-
-        if (T.peek().type == TKN_EQUAL) {
-            T.expect(TKN_EQUAL);
-            Node *val = expr(T, E);
-            T.expect(TKN_SEMICOLON);
-            return E.node(AssignmentNode(var, val));
-        } else {
-            T.expect(TKN_SEMICOLON);
-            return E.node(VarNode(var.name));
-        }
-    } else {
-        return expr(T, E);
-    }
-}
-
-Environment
-parse (TokenizedInput &T)
-{
-    T.set_runtime_error_func(error_func);
-    Environment E(NULL);
-    Node *N = E.root();
-
-    while (!T.empty())
-        N->add_child(define(T, E));
-
-    return E;
-}
