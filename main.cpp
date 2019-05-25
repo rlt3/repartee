@@ -17,6 +17,20 @@ usage (char *prog)
     exit(1);
 }
 
+std::string
+datatype_to_str (DataType type)
+{
+    switch (type) {
+        case FREE: return "free"; break;
+        case AUTO: return "auto"; break;
+        case VOID: return "void"; break;
+        case INTEGER: return "integer"; break;
+        case FLOAT: return "float"; break;
+        case STRING: return "string"; break;
+        case FUNCTION: return "function"; break;
+        default: return "bad type"; break;
+    }
+}
 TokenizedInput
 tokenize_input (char *filename)
 {

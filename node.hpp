@@ -18,6 +18,8 @@ typedef enum _DataType {
     FUNCTION,
 } DataType;
 
+std::string datatype_to_str (DataType type);
+
 struct Local {
     Local ()
         : node(NULL), type(VOID), loc(-1)

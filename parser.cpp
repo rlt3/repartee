@@ -88,7 +88,7 @@ factor_tail (TokenizedInput &T, Environment &E, ExprNode *prev)
         return prev;
 
     int op = T.next().type;
-    Node *right = item(T, E);
+    ExprNode *right = item(T, E);
 
     return factor_tail(T, E, E.node(BinaryOpNode(prev, op, right)));
 }
@@ -111,7 +111,7 @@ sum_tail (TokenizedInput &T, Environment &E, ExprNode *prev)
         return prev;
 
     int op = T.next().type;
-    Node *right = factor(T, E);
+    ExprNode *right = factor(T, E);
 
     return sum_tail(T, E, E.node(BinaryOpNode(prev, op, right)));
 }

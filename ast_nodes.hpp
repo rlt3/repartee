@@ -104,8 +104,8 @@ public:
 
 class BinaryOpNode : public ExprNode {
 public:
-    BinaryOpNode (Node *left, int op, Node *right)
-        : ExprNode(INTEGER), left(left), op(op), right(right)
+    BinaryOpNode (ExprNode *left, int op, ExprNode *right)
+        : ExprNode(FREE), left(left), op(op), right(right)
     {
         switch (op) {
             case TKN_ADD: name = "+"; break;
@@ -137,8 +137,20 @@ public:
                 ins_op = OP_CMP;
                 break;
         }
+
+        /* descend down the tree first */
         left->gen_code(prog);
         right->gen_code(prog);
+
+        if (left->type != right->type) {
+            fprintf(stderr, "Cannot convert %s to %s\n",
+                    datatype_to_str(left->type).c_str(),
+                    datatype_to_str(right->type).c_str());
+            exit(1);
+        }
+        /* update the type of this expression after having done type checking */
+        this->type = left->type;
+
         prog.push_back(create_instruction(ins_op, 2));
     }
 
@@ -151,7 +163,7 @@ public:
         right->print_tree(lvl);
     }
 
-    Node *left;
+    ExprNode *left;
     int op;
-    Node *right;
+    ExprNode *right;
 };
