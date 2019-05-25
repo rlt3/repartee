@@ -305,6 +305,24 @@ protected:
             AST Node Classes
  ******************************************/
 
+class FuncNode : public Node {
+    FuncNode (std::string name, std::vector<Variable> params)
+        : Node("function", true)
+    { }
+
+    void
+    setup ()
+    {
+        /* write params ? */
+    }
+
+    void
+    code (std::vector<Instruction> &prog)
+    {
+        /* write function body and return */
+    }
+};
+
 /* Write out the instructions for all resolved labels/addresses */
 class IfElseNode : public Node {
 public:

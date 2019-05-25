@@ -229,6 +229,16 @@ cond_or (TokenizedInput &T, Environment &E, Node *N)
     }
 }
 
+void
+body (TokenizedInput &T, Environment &E, Node *N)
+{
+    T.expect(TKN_LEFT_BRACE);
+    while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
+        expr(T, E, N);
+    }
+    T.expect(TKN_RIGHT_BRACE);
+}
+
 /* 
  * <expr> := <name> = <cond_or>
  *         | if (<cond_or>) { <expr>+ }
@@ -278,23 +288,14 @@ expr (TokenizedInput &T, Environment &E, Node *N)
         T.expect(TKN_RIGHT_PAREN);
 
         C->add_child(E.node(JmpZeroNode("false")));
-
-        T.expect(TKN_LEFT_BRACE);
-        while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
-            expr(T, E, C);
-        }
-        T.expect(TKN_RIGHT_BRACE);
+        body(T, E, C);
 
         if (T.peek().type == TKN_ELSE) {
             C->add_child(E.node(JmpNode("exit")));
             C->add_child(E.node(LabelNode("false")));
 
             T.expect(TKN_ELSE);
-            T.expect(TKN_LEFT_BRACE);
-            while (!(T.empty() || T.peek().type == TKN_RIGHT_BRACE)) {
-                expr(T, E, C);
-            }
-            T.expect(TKN_RIGHT_BRACE);
+            body(T, E, C);
 
             C->add_child(E.node(LabelNode("exit")));
         } else {
@@ -310,6 +311,38 @@ expr (TokenizedInput &T, Environment &E, Node *N)
 
 }
 
+std::vector<Variable>
+params (TokenizedInput &T, Environment &E, Node *N)
+{
+    std::vector<Variable> params;
+
+    T.expect(TKN_LEFT_PAREN);
+    while (!(T.empty() || T.peek().type == TKN_RIGHT_PAREN)) {
+        T.expect(TKN_INT);
+        std::string name = T.expect(TKN_NAME).str;
+        params.push_back(Variable(name, INTEGER, true));
+        if (T.peek().type == TKN_COMMA)
+            T.next();
+    }
+    T.expect(TKN_RIGHT_PAREN);
+
+    return params;
+}
+
+void
+func (TokenizedInput &T, Environment &E, Node *N)
+{
+    if (T.peek().type != TKN_FUNC) {
+        expr(T, E, N);
+        return;
+    }
+
+    T.expect(TKN_FUNC);
+    std::string name = T.expect(TKN_NAME).str;
+    std::vector<Variable> p = params(T, E, N);
+    body(T, E, N);
+}
+
 Environment
 parse (TokenizedInput &T)
 {
@@ -318,7 +351,7 @@ parse (TokenizedInput &T)
     Node *N = E.root();
 
     while (!T.empty())
-        expr(T, E, N);
+        func(T, E, N);
 
     return E;
 }

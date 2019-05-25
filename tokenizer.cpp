@@ -8,7 +8,10 @@ static const std::map<std::string, enum TokenType> SymReserved = {
     { "else", TKN_ELSE },
     { "and", TKN_LOGICAL_AND },
     { "or", TKN_LOGICAL_OR },
-    { "func", TKN_FUNC }
+    { "func", TKN_FUNC },
+    { "int", TKN_INT },
+    { "float", TKN_FLOAT },
+    { "string", TKN_STRING }
 };
 
 static const std::map<char, enum TokenType> SymTypes = {
@@ -20,6 +23,7 @@ static const std::map<char, enum TokenType> SymTypes = {
     { '&', TKN_BITWISE_AND },
     { '|', TKN_BITWISE_OR },
     { '.', TKN_PERIOD },
+    { ',', TKN_COMMA },
     { ';', TKN_SEMICOLON },
     { '(', TKN_LEFT_PAREN },
     { ')', TKN_RIGHT_PAREN },
@@ -267,6 +271,9 @@ tokentype_to_str (int type)
         case TKN_IF: return "if";
         case TKN_ELSE: return "else";
         case TKN_FUNC: return "func";
+        case TKN_INT: return "int";
+        case TKN_FLOAT: return "float";
+        case TKN_STRING: return "string";
         case TKN_EQUAL: return "=";
         case TKN_DBL_EQUAL: return "==";
         case TKN_BITWISE_AND: return "&";
@@ -274,6 +281,7 @@ tokentype_to_str (int type)
         case TKN_LOGICAL_AND: return "&&";
         case TKN_LOGICAL_OR: return "||";
         case TKN_PERIOD: return ".";
+        case TKN_COMMA: return ",";
         case TKN_SEMICOLON: return ";";
         case TKN_LEFT_PAREN: return "(";
         case TKN_RIGHT_PAREN: return ")";

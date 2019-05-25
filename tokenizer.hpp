@@ -17,9 +17,13 @@ enum TokenType {
     TKN_IF,
     TKN_ELSE,
     TKN_FUNC,
+    TKN_INT,
+    TKN_FLOAT,
+    TKN_STRING,
 
     TKN_EQUAL,
     TKN_PERIOD,
+    TKN_COMMA,
     TKN_SEMICOLON,
 
     TKN_BITWISE_AND,
