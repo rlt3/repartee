@@ -9,7 +9,7 @@
 
 static uint8_t stack_index = 0;
 static int32_t stack[STACK_DEPTH] = {0};
-static int32_t mem[MEM_DEPTH] = {0};
+//static int32_t mem[MEM_DEPTH] = {0};
 
 void
 machine_error (const char *err)
@@ -176,6 +176,8 @@ run (std::vector<Instruction> program)
                 if (DEBUG) printf("halt %d\n", imm);
                 goto exit;
 
+            case OP_PUSH_LOCAL:
+                if (DEBUG) printf("local");
             case OP_PUSH:
                 if (DEBUG) printf("push %d\n", imm);
                 stack_push(imm);
@@ -197,14 +199,14 @@ run (std::vector<Instruction> program)
                 if (DEBUG) printf("load %d\n", imm);
                 if (imm < 0 || imm >= MEM_DEPTH)
                     machine_error("segmentation fault\n");
-                stack_push(mem[imm]);
+                stack_push(stack[imm]);
                 break;
 
             case OP_STORE:
                 if (DEBUG) printf("store %d\n", imm);
                 if (imm < 0 || imm >= MEM_DEPTH)
                     machine_error("segmentation fault\n");
-                mem[imm] = stack_pop();
+                stack[imm] = stack_pop();
                 break;
 
             case OP_CMP:
@@ -252,6 +254,10 @@ print_bytecode (std::vector<Instruction> program)
 
             case OP_PUSH:
                 printf("push %d\n", imm);
+                break;
+
+            case OP_PUSH_LOCAL:
+                printf("local push %d\n", imm);
                 break;
 
             case OP_POP:

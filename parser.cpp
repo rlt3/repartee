@@ -1,7 +1,5 @@
 #include <sstream>
-#include <map>
 #include "parser.hpp"
-#include "machine.hpp"
 
 /*
  * TODO: Can be a general error function with a void pointer data type that can
@@ -30,7 +28,7 @@ error_func (int error_type, Token t, int data)
 ExprNode* expr (TokenizedInput &T, Environment &E);
 
 ExprNode*
-var (TokenizedInput &T, Environment &E)
+var_free (TokenizedInput &T, Environment &E)
 {
     return E.node(VarNode(T.expect(TKN_NAME).str));
 }
@@ -48,7 +46,7 @@ atom (TokenizedInput &T, Environment &E)
         return number(T, E);
     }
     else {
-        return var(T, E);
+        return var_free(T, E);
     }
 }
 
@@ -109,21 +107,27 @@ sum (TokenizedInput &T, Environment &E)
     return sum_tail(T, E, factor(T, E));
 }
 
-VarNode*
-var_declare (TokenizedInput &T, Environment &E)
+bool
+is_type_name (Token t)
 {
-    Variable var;
+    int type = t.type;
+    return (type == TKN_INT || type == TKN_FLOAT || type == TKN_STRING);
+}
+
+DataType
+type_name (TokenizedInput &T, Environment &E)
+{
     Token t = T.next();
-    std::string name = T.expect(TKN_NAME).str;
+    DataType type;
 
     switch (t.type) {
-        case TKN_INT:    var = Variable(name, INTEGER, false); break;
-        case TKN_STRING: var = Variable(name, STRING, false); break;
+        case TKN_INT:    type = INTEGER; break;
+        case TKN_FLOAT:  type = FLOAT;   break;
+        case TKN_STRING: type = STRING;  break;
         default: break;
     }
 
-    E.reg_var(var.name, var);
-    return var;
+    return type;
 }
 
 ExprNode*
@@ -132,22 +136,44 @@ expr (TokenizedInput &T, Environment &E)
     return sum(T, E);
 }
 
+ExprNode*
+var_declare (TokenizedInput &T, Environment &E)
+{
+    DataType type = type_name(T, E);
+    std::string name = T.expect(TKN_NAME).str;
+    E.reg_local(name, Local(E.node(LocalNode(type)), type));
+    return E.node(VarNode(name, type));
+}
+
+Node*
+assign (TokenizedInput &T, Environment &E)
+{
+    ExprNode* var;
+
+    /* 
+     * If the assignment has a type definition then we are declaring a new
+     * variable of that type.
+     */
+    if (is_type_name(T.peek()))
+        var = var_declare(T, E);
+    else
+        var = var_free(T, E);
+
+    T.expect(TKN_EQUAL);
+    ExprNode *val = expr(T, E);
+    T.expect(TKN_SEMICOLON);
+
+    return E.node(AssignmentNode(var, val));
+}
+
 Node *
 define (TokenizedInput &T, Environment &E)
 {
-    if (T.peek().type == TKN_INT || T.peek().type == TKN_STRING) {
-        Variable var = var_declare(T, E);
-
-        if (T.peek().type == TKN_EQUAL) {
-            T.expect(TKN_EQUAL);
-            ExprNode *val = expr(T, E);
-            T.expect(TKN_SEMICOLON);
-            return E.node(AssignmentNode(var, val));
-        } else {
-            T.expect(TKN_SEMICOLON);
-            return E.node(VarNode(var.name));
-        }
-    } else {
+    if ((T.peek().type == TKN_NAME && T.peek(1).type == TKN_EQUAL)
+            || is_type_name(T.peek())) {
+        return assign(T, E);
+    }
+    else {
         Node *e = expr(T, E);
         T.expect(TKN_SEMICOLON);
         return e;

@@ -70,7 +70,8 @@ main (int argc, char **argv)
     TokenizedInput tokens = tokenize_input(argv[argc - 1]);
     Environment E = parse(tokens);
     
-    std::vector<Instruction> bytecode = E.generate_bytecode();
+    std::vector<Instruction> bytecode;
+    E.generate_bytecode(bytecode);
 
     if (is_debug) {
         E.root()->print_tree(0);

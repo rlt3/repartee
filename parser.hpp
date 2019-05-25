@@ -1,6 +1,7 @@
 #pragma once
 #include "tokenizer.hpp"
 #include "environment.hpp"
+#include "ast_nodes.hpp"
 
 /*
  * Parse an expression. Consumes tokens from TokenizedInput but not necessarily
