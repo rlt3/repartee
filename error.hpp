@@ -1,4 +1,10 @@
+#include <iostream>
 #include <stdarg.h>
+
+/*
+ * Set the output stream for all errors. Default is std::err
+ */
+void set_error_output (std::ostream &out);
 
 /* 
  * Print an error message and immediately exit the program.

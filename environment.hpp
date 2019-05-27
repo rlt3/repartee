@@ -4,6 +4,9 @@
 #include <unordered_map>
 #include "symbol.hpp"
 
+/*
+ * The Environment defines and owns symbols for evaluating an Expression.
+ */
 class Environment {
 public:
     /* The global or root environment */

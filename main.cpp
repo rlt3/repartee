@@ -1,9 +1,10 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include "symbol.hpp"
 #include "environment.hpp"
+#include "symbol.hpp"
 #include "error.hpp"
+#include "machine.hpp"
 
 void
 eval (std::istream &input, std::ostream &output)
@@ -28,7 +29,7 @@ main (void)
 
     error("e: %d\n", c++);
     warning("foo: %d\n", v);
-    panic("e: %d\n", c++);
+    panic("bad: %d\n", c++);
 
     return 0;
 }

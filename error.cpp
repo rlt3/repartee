@@ -1,10 +1,13 @@
-#include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 #include "error.hpp"
 
 #define BUFFSIZE 1024
 #define ERRORMAX 5
+
+static int num_errors = 0;
+static std::ostream *out = &std::cerr; /* lmaoing @ C++ */
 
 #define PRINT_FMT_STRING() \
     char buff[BUFFSIZE] = {0}; \
@@ -12,14 +15,18 @@
     va_start(argp, fmt); \
     vsnprintf(buff, BUFFSIZE, fmt, argp); \
     va_end(argp); \
-    std::cerr << std::string(buff);
+    *out << std::string(buff);
 
-static int num_errors = 0;
+void
+set_error_output (std::ostream &output)
+{
+    out = &output;
+}
 
 void
 panic (const char *fmt, ...)
 {
-    std::cerr << "Panic: ";
+    *out << "Panic: ";
     PRINT_FMT_STRING();
     std::exit(1);
 }
@@ -30,7 +37,7 @@ error (const char *fmt, ...)
     PRINT_FMT_STRING();
     num_errors++;
     if (num_errors >= ERRORMAX) {
-        std::cerr << "Maximum number of errors reached!\n";
+        *out << "Maximum number of errors reached!\n";
         std::exit(1);
     }
 }
