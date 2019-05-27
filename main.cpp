@@ -1,100 +1,34 @@
-#include <stdlib.h>
-#include <stdio.h>
 #include <iostream>
-#include <errno.h>
-#include <string.h>
-
-#include "tokenizer.hpp"
-#include "parser.hpp"
-#include "machine.hpp"
+#include <stdio.h>
+#include <stdlib.h>
+#include "symbol.hpp"
 #include "environment.hpp"
-#include "arg.h"
+#include "error.hpp"
 
 void
-usage (char *prog)
+eval (std::istream &input, std::ostream &output)
 {
-    fprintf(stderr, "%s <input file|->\n", prog);
-    exit(1);
-}
-
-std::string
-datatype_to_str (DataType type)
-{
-    switch (type) {
-        case FREE: return "free"; break;
-        case AUTO: return "auto"; break;
-        case VOID: return "void"; break;
-        case INTEGER: return "integer"; break;
-        case FLOAT: return "float"; break;
-        case STRING: return "string"; break;
-        case FUNCTION: return "function"; break;
-        default: return "bad type"; break;
-    }
-}
-TokenizedInput
-tokenize_input (char *filename)
-{
-    std::string f(filename);
-    TokenizedInput tokens;
-
-    if (f == "-") {
-        tokens = tokenize(std::cin);
-    } else {
-        std::ifstream input(f, std::ios::in);
-        if (input.fail()) {
-            fprintf(stderr, "%s: `%s'\n", strerror(errno), filename);
-            exit(1);
-        }
-        tokens = tokenize(input);
-    }
-
-    if (tokens.has_error()) {
-        fprintf(stderr, "%s\n", tokens.get_error().c_str());
-        exit(1);
-    }
-
-    return tokens;
-}
-
-static bool is_debug = false;
-static bool is_execute = true;
-
-void
-handle_args (int argc, char **argv)
-{
-    if (argc < 2)
-        usage(argv[0]);
-
-    /* for ARGBEGIN macro see arg.h */
-    ARGBEGIN {
-        /* show debug */
-        case 'd': is_debug = true; break;
-        /* no execute */
-        case 'n': is_execute = false; break;
-        case 'h': usage(argv[0]); break;
-        default: break;
-    } ARGEND
+    /*
+     * + Tokenize input stream
+     *   - bad characters
+     * + Parse tokens into AST
+     *   - malformed input, invalid sequences
+     * + Produce expression (bytecode) from AST
+     *   - undefined symbols, invalid types
+     * + Evaluate the expression
+     */
 }
 
 int
-main (int argc, char **argv)
+main (void)
 {
-    handle_args(argc, argv);
+    Symbol foo(5);
+    int v = foo.integer();
+    int c = 0;
 
-    TokenizedInput tokens = tokenize_input(argv[argc - 1]);
-    Environment E = parse(tokens);
-    
-    std::vector<Instruction> bytecode;
-    E.generate_bytecode(bytecode);
+    error("e: %d\n", c++);
+    warning("foo: %d\n", v);
+    panic("e: %d\n", c++);
 
-    if (is_debug) {
-        E.root()->print_tree(0);
-        print_bytecode(bytecode);
-    }
-
-    if (is_execute) {
-        printf("%d\n", run(bytecode));
-    }
-    
     return 0;
 }
