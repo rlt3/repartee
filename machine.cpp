@@ -170,11 +170,6 @@ evaluate (Expression &expr, std::ostream &output)
                 if (DEBUG) printf("halt\n");
                 goto exit;
 
-            case OP_SETL:
-                if (DEBUG) printf("setup local\n");
-                stack_push(0);
-                break;
-
             case OP_PUSHC:
                 if (DEBUG) printf("pushc %d\n", imm);
                 stack_push(prog[pc - 1 + imm]);
@@ -190,6 +185,26 @@ evaluate (Expression &expr, std::ostream &output)
             case OP_DIV:
             case OP_MUL:
                 handle_arithmetic(op);
+                break;
+
+            /*
+             * TODO:
+             * When I make the Machine symbolic, use this instruction to setup
+             * the Environment (prematurely removed) to hold values between
+             * execution of expressions. Since the values in the Machine will
+             * all be Symbols then they will be easily updated or changed
+             * arbitrarily. Thie effectively allows:
+             *
+             * > int a = 5;
+             * OK
+             * > a;
+             * 5
+             *
+             * Whereas now, the Machine running on binary, this is impossible.
+             */
+            case OP_SETL:
+                if (DEBUG) printf("setup local\n");
+                stack_push(0);
                 break;
 
             case OP_LOADL:
