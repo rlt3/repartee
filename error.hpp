@@ -1,5 +1,6 @@
 #include <iostream>
 #include <stdarg.h>
+#include <assert.h>
 
 /*
  * Set the output stream for all errors. Default is std::err

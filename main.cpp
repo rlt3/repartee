@@ -23,13 +23,19 @@ eval (std::istream &input, std::ostream &output)
 int
 main (void)
 {
-    Symbol foo(5);
-    int v = foo.integer();
-    int c = 0;
+    Expression expr;
 
-    error("e: %d\n", c++);
-    warning("foo: %d\n", v);
-    panic("bad: %d\n", c++);
+    /* 5 + 20 * 4 / 5 */
+    expr.push_constant(5);
+    expr.push_constant(20);
+    expr.binary_op(BIN_ADD);
+    expr.push_constant(4);
+    expr.binary_op(BIN_MUL);
+    expr.push_constant(5);
+    expr.binary_op(BIN_DIV);
+    expr.finish();
+
+    evaluate(expr, std::cout);
 
     return 0;
 }
