@@ -1,19 +1,20 @@
 #pragma once
 
 #include "instructions.hpp"
-#include <vector>
-#include <utility>
 #include <unordered_map>
+#include <utility>
+#include <vector>
+#include <string>
 
 enum BinOps {
     BIN_ADD,
     BIN_MUL,
     BIN_SUB,
     BIN_DIV,
-    BIN_CMP_LT,
-    BIN_CMP_GT,
-    BIN_CMP_EQ,
-    BIN_CMP_NE
+    BIN_CMPLT,
+    BIN_CMPGT,
+    BIN_CMPEQ,
+    BIN_CMPNE
 };
 
 /*
@@ -30,19 +31,27 @@ class Expression {
 public:
     Expression ();
 
-    /* setup a local on the stack and return its index */
-    unsigned add_local ();
-
     /* push value of constant value onto the stack */
     void push_constant (int value);
     void push_constant (float value);
 
     /* push the value of the local at the stack index onto stack */
-    void load_local (unsigned stack_index);
+    void load_local (std::string name);
 
-    /* do the given binary or unary operations */
-    void binary_op (enum BinOps type);
-    void unary_op (int type);
+    /* store the value on the stack into the local */
+    void store_local (std::string name);
+
+    /* integer arithmetic */
+    void addi ();
+    void subi ();
+    void muli ();
+    void divi ();
+
+    /* comparisons */
+    void cmplt ();
+    void cmpgt ();
+    void cmpeq ();
+    void cmpne ();
 
     /* conditional jumps */
     void ifeq (int addr);
@@ -54,20 +63,39 @@ public:
     /* finalize the expression for evaluation */
     void finish ();
 
+    /* get the stack index for the local */
+    unsigned get_local (std::string name) const;
+
+    /* return final generated code */
     std::vector<Instruction> code () const;
+
+    /* get the entry point of the generated code */
     unsigned entry () const;
 
 protected:
+    /* add a local if it doesn't exist otherwise get it */
+    unsigned add_or_get_local (std::string name);
+
     /* add a constant and produce a backpatch for current instruction */
-    void add_constant (int32_t value);
+    void create_constant_backpatch (int32_t value);
 
     /* write all constants and patch with their relative addresses */
     void patch_constants (std::vector<Instruction> &code);
 
+    /* write setup instructions for locals */
+    void write_locals (std::vector<Instruction> &code);
+
     bool is_finished;
+
+    /* entry point or first instruction of the expression */
     unsigned entry_index;
-    std::vector<Instruction> bytecode;
-    std::vector<Instruction> locals;
+
+    unsigned num_locals;
+    std::unordered_map<std::string, unsigned> locals;
+
+    /* constants and their backpatches */
     std::unordered_map<int32_t, unsigned> constants;
     std::vector<std::pair<unsigned, unsigned>> constant_bp;
+
+    std::vector<Instruction> bytecode;
 };

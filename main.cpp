@@ -26,13 +26,23 @@ main (void)
     Expression expr;
 
     /* 5 + 20 * 4 / 5 */
+    //expr.push_constant(5);
+    //expr.push_constant(20);
+    //expr.addi();
+    //expr.push_constant(4);
+    //expr.muli();
+    //expr.push_constant(5);
+    //expr.divi();
+    //expr.finish();
+
+    /* int a = 5; int b = 2 * a; b; */
     expr.push_constant(5);
-    expr.push_constant(20);
-    expr.binary_op(BIN_ADD);
-    expr.push_constant(4);
-    expr.binary_op(BIN_MUL);
-    expr.push_constant(5);
-    expr.binary_op(BIN_DIV);
+    expr.store_local("a");
+    expr.push_constant(2);
+    expr.load_local("a");
+    expr.muli();
+    expr.store_local("b");
+    expr.load_local("b");
     expr.finish();
 
     evaluate(expr, std::cout);
