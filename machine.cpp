@@ -173,28 +173,28 @@ evaluate (Expression &expr, std::ostream &output)
                 stack_push((A < B));
                 break;
 
-            case OP_ADD:
+            case OP_ADDI:
                 if (DEBUG) printf("add\n");
                 B = stack_pop();
                 A = stack_pop();
                 stack_push(A + B);
                 break;
 
-            case OP_SUB:
+            case OP_SUBI:
                 if (DEBUG) printf("sub\n");
                 B = stack_pop();
                 A = stack_pop();
                 stack_push(A - B);
                 break;
 
-            case OP_DIV:
+            case OP_DIVI:
                 if (DEBUG) printf("div\n");
                 B = stack_pop();
                 A = stack_pop();
                 stack_push(A / B);
                 break;
 
-            case OP_MUL:
+            case OP_MULI:
                 if (DEBUG) printf("mul\n");
                 B = stack_pop();
                 A = stack_pop();

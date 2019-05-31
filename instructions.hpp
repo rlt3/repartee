@@ -32,10 +32,10 @@ enum InsOpcode {
     OP_HALT   = 0x00,
     OP_PUSHC  = 0x01, /* push constant at constant index onto stack */
     OP_POP    = 0x02, /* pop top of stack */
-    OP_ADD    = 0x03, /* pop n values off stack, add them, and push result */
-    OP_SUB    = 0x04, /* pop n values off stack, subtract them, and push result */
-    OP_DIV    = 0x05, /* pop n values off stack, divide them, and push result */
-    OP_MUL    = 0x06, /* pop n values off stack, multiply them, and push result */
+    OP_ADDI   = 0x03, /* pop n values off stack, add them, and push result */
+    OP_SUBI   = 0x04, /* pop n values off stack, subtract them, and push result */
+    OP_DIVI   = 0x05, /* pop n values off stack, divide them, and push result */
+    OP_MULI   = 0x06, /* pop n values off stack, multiply them, and push result */
     OP_LOADL  = 0x07, /* push local's value onto stack */
     OP_STOREL = 0x08, /* store top of stack into local */
     OP_CMPEQ  = 0x09, /* compare top 2 push 1 if eq 0 if not */
@@ -45,5 +45,10 @@ enum InsOpcode {
     OP_IFEQ   = 0x0d, /* jump to addr if top of stack is true */
     OP_IFNE   = 0x0e, /* jump to addr if top of stack is false */
     OP_JMP    = 0x0f, /* jump to addr */
-    OP_SETL   = 0x10  /* setup local on stack (default value of 0) */
+    OP_SETL   = 0x10, /* setup local on stack (default value of 0) */
+
+    OP_ADDF   = 0x11, /* pop n values off stack, add them, and push result */
+    OP_SUBF   = 0x12, /* pop n values off stack, subtract them, and push result */
+    OP_DIVF   = 0x13, /* pop n values off stack, divide them, and push result */
+    OP_MULF   = 0x14, /* pop n values off stack, multiply them, and push result */
 };

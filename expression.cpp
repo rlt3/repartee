@@ -46,28 +46,28 @@ void
 Expression::addi ()
 {
     assert(!is_finished);
-    bytecode.push_back(create_instruction(OP_ADD));
+    bytecode.push_back(create_instruction(OP_ADDI));
 }
 
 void
 Expression::subi ()
 {
     assert(!is_finished);
-    bytecode.push_back(create_instruction(OP_SUB));
+    bytecode.push_back(create_instruction(OP_SUBI));
 }
 
 void
 Expression::muli ()
 {
     assert(!is_finished);
-    bytecode.push_back(create_instruction(OP_MUL));
+    bytecode.push_back(create_instruction(OP_MULI));
 }
 
 void
 Expression::divi ()
 {
     assert(!is_finished);
-    bytecode.push_back(create_instruction(OP_DIV));
+    bytecode.push_back(create_instruction(OP_DIVI));
 }
 
 void
