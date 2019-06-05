@@ -47,5 +47,23 @@ main (void)
 
     evaluate(expr, std::cout);
 
+    int x = 26;
+    double y = 52.3;
+    Symbol a(16);
+    Symbol b(3.7);
+    Symbol c(&x);
+
+    printf("a: %d\n", a.storage.integer());
+    printf("b: %lf\n", b.storage.floating());
+    printf("c: %d\n", *((int*)c.storage.ptr()));
+
+    a.storage.set(0, 32);
+    b.storage.set(0, 7.4);
+    c.storage.set(0, &y);
+
+    printf("a: %d\n", a.storage.integer());
+    printf("b: %lf\n", b.storage.floating());
+    printf("c: %lf\n", *((double*)c.storage.ptr()));
+
     return 0;
 }
