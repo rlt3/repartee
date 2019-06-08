@@ -47,23 +47,34 @@ main (void)
 
     evaluate(expr, std::cout);
 
-    int x = 26;
-    double y = 52.3;
     Symbol a(16);
     Symbol b(3.7);
-    Symbol c(&x);
+    Symbol c(&a);
 
-    printf("a: %d\n", a.storage.integer());
-    printf("b: %lf\n", b.storage.floating());
-    printf("c: %d\n", *((int*)c.storage.ptr()));
+    printf("a: %d\n", a.integer());
+    printf("b: %lf\n", b.floating());
+    printf("c: %d\n", c.ref()->integer());
 
-    a.storage.set(0, 32);
-    b.storage.set(0, 7.4);
-    c.storage.set(0, &y);
+    a.set(0, 32);
+    b.set(0, 7.4);
+    c.set(0, &b);
 
-    printf("a: %d\n", a.storage.integer());
-    printf("b: %lf\n", b.storage.floating());
-    printf("c: %lf\n", *((double*)c.storage.ptr()));
+    printf("a: %d\n", a.integer());
+    printf("b: %lf\n", b.floating());
+    printf("c: %lf\n", c.ref()->floating());
+
+    Symbol s(24, 0);
+    /* { int, double, int, double } */
+
+    s.set(0, 2);
+    s.set(4, 2.5);
+    s.set(12, 3);
+    s.set(16, 3.5);
+
+    printf("s.i1: %d\n", s.integer_at(0));
+    printf("s.d1: %lf\n", s.floating_at(4));
+    printf("s.i2: %d\n", s.integer_at(12));
+    printf("s.d2: %lf\n", s.floating_at(16));
 
     return 0;
 }
